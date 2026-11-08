@@ -45,7 +45,7 @@
                 <x-site-footer />
             </div>
         </div>
-        <dialog id="action-confirmation" class="w-[min(92vw,30rem)] rounded-xl border border-gray-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/50">
+        <dialog id="action-confirmation" class="w-[min(92vw,30rem)] rounded-xl border border-gray-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/60 backdrop:backdrop-blur-md">
             <div class="border-b border-gray-200 px-6 py-4">
                 <p id="action-confirmation-eyebrow" class="text-xs font-semibold uppercase tracking-widest text-slate-500">Konfirmasi tindakan</p>
                 <h2 id="action-confirmation-title" class="mt-1 text-lg font-semibold">Lanjutkan?</h2>

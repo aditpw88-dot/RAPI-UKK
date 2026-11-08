@@ -41,18 +41,181 @@ class Event extends Model
             return $this->status;
         }
 
-        return $this->completed_at ? 'completed' : 'in_progress';
+        if ($this->completed_at !== null) {
+            return 'completed';
+        }
+
+        $now = now();
+        $startDate = is_string($this->date) ? $this->date : ($this->date?->format('Y-m-d') ?? '');
+        $endDate = $this->end_date ? (is_string($this->end_date) ? $this->end_date : $this->end_date->format('Y-m-d')) : $startDate;
+        $startTime = $this->start_time ?: '00:00:00';
+        $endTime = $this->end_time ?: '23:59:59';
+
+        $startDateTime = \Illuminate\Support\Carbon::parse("{$startDate} {$startTime}");
+        $endDateTime = \Illuminate\Support\Carbon::parse("{$endDate} {$endTime}");
+
+        if ($now->greaterThanOrEqualTo($endDateTime)) {
+            return 'completed';
+        }
+
+        if ($now->lessThan($startDateTime)) {
+            return 'upcoming';
+        }
+
+        return 'in_progress';
     }
 
     public function getLifecycleStatusLabelAttribute(): string
     {
         return match ($this->lifecycle_status) {
             'pending' => 'Menunggu Persetujuan',
+            'upcoming' => 'Belum Terlaksana',
             'in_progress' => 'Sedang Terlaksana',
             'completed' => 'Sudah Terlaksana',
             'rejected' => 'Ditolak',
             default => ucfirst($this->lifecycle_status),
         };
+    }
+
+    public function getLifecycleBadgeClassAttribute(): string
+    {
+        return match ($this->lifecycle_status) {
+            'pending' => 'bg-amber-100 text-amber-800',
+            'upcoming' => 'bg-amber-100 text-amber-800',
+            'in_progress' => 'bg-emerald-100 text-emerald-800',
+            'completed' => 'bg-blue-100 text-blue-800',
+            'rejected' => 'bg-red-100 text-red-700',
+            default => 'bg-gray-100 text-gray-700',
+        };
+    }
+
+    public static function sortByLifecycle(iterable $events): \Illuminate\Support\Collection
+    {
+        return collect($events)->sort(function ($a, $b) {
+            $getWeight = function ($e) {
+                $status = is_array($e) ? ($e['lifecycle_status'] ?? $e['status'] ?? '') : ($e->lifecycle_status ?? $e->status ?? '');
+                return match ($status) {
+                    'in_progress' => 0,
+                    'upcoming', 'pending' => 1,
+                    'completed' => 2,
+                    'rejected' => 3,
+                    default => 2,
+                };
+            };
+
+            $wA = $getWeight($a);
+            $wB = $getWeight($b);
+
+            if ($wA !== $wB) {
+                return $wA <=> $wB;
+            }
+
+            $dateA = is_array($a) ? ($a['date'] ?? '') : ($a->date ?? '');
+            $dateB = is_array($b) ? ($b['date'] ?? '') : ($b->date ?? '');
+            $startTimeA = is_array($a) ? ($a['start_time'] ?? '00:00:00') : ($a->start_time ?? '00:00:00');
+            $startTimeB = is_array($b) ? ($b['start_time'] ?? '00:00:00') : ($b->start_time ?? '00:00:00');
+            $endTimeA = is_array($a) ? ($a['end_time'] ?? '23:59:59') : ($a->end_time ?? '23:59:59');
+            $endTimeB = is_array($b) ? ($b['end_time'] ?? '23:59:59') : ($b->end_time ?? '23:59:59');
+
+            if ($wA === 0 || $wA === 1) {
+                $dtA = $dateA . ' ' . $startTimeA;
+                $dtB = $dateB . ' ' . $startTimeB;
+                return $dtA <=> $dtB;
+            }
+
+            $endDateA = is_array($a) ? ($a['end_date'] ?? $dateA) : ($a->end_date ?? $dateA);
+            $endDateB = is_array($b) ? ($b['end_date'] ?? $dateB) : ($b->end_date ?? $dateB);
+            $dtA = $endDateA . ' ' . $endTimeA;
+            $dtB = $endDateB . ' ' . $endTimeB;
+            return $dtB <=> $dtA;
+        })->values();
+    }
+
+    public static function getActiveBookedEvents(): \Illuminate\Support\Collection
+    {
+        return self::with('rooms')
+            ->where(function ($query) {
+                $query->where('status', 'pending')
+                    ->orWhere(fn ($query) => $query->where('status', 'approved')->whereNull('completed_at'));
+            })
+            ->whereRaw('COALESCE(end_date, date) >= ?', [now()->toDateString()])
+            ->get()
+            ->map(function ($event) {
+                $startDate = is_string($event->date) ? $event->date : $event->date->format('Y-m-d');
+                $endDate = $event->end_date ? (is_string($event->end_date) ? $event->end_date : $event->end_date->format('Y-m-d')) : $startDate;
+
+                return [
+                    'id' => $event->id,
+                    'event_name' => $event->event_name,
+                    'room_ids' => $event->reservedRoomIds(),
+                    'date' => $startDate,
+                    'end_date' => $endDate,
+                    'start_time' => substr($event->start_time ?: '00:00:00', 0, 5),
+                    'end_time' => substr($event->end_time ?: '23:59:59', 0, 5),
+                    'lifecycle_status' => $event->lifecycle_status,
+                ];
+            })
+            ->values();
+    }
+
+    public function scopeApprovedUpcoming(Builder $query): Builder
+    {
+        $now = now();
+        $date = $now->toDateString();
+        $time = $now->format('H:i:s');
+
+        return $query->where('status', 'approved')
+            ->whereNull('completed_at')
+            ->where(function ($q) use ($date, $time) {
+                $q->whereDate('date', '>', $date)
+                    ->orWhere(function ($q) use ($date, $time) {
+                        $q->whereDate('date', '=', $date)
+                            ->where('start_time', '>', $time);
+                    });
+            });
+    }
+
+    public function scopeApprovedInProgress(Builder $query): Builder
+    {
+        $now = now();
+        $date = $now->toDateString();
+        $time = $now->format('H:i:s');
+
+        return $query->where('status', 'approved')
+            ->whereNull('completed_at')
+            ->where(function ($q) use ($date, $time) {
+                $q->whereDate('date', '<', $date)
+                    ->orWhere(function ($q) use ($date, $time) {
+                        $q->whereDate('date', '=', $date)
+                            ->where('start_time', '<=', $time);
+                    });
+            })
+            ->where(function ($q) use ($date, $time) {
+                $q->whereRaw('COALESCE(end_date, date) > ?', [$date])
+                    ->orWhere(function ($q) use ($date, $time) {
+                        $q->whereRaw('COALESCE(end_date, date) = ?', [$date])
+                            ->where('end_time', '>', $time);
+                    });
+            });
+    }
+
+    public function scopeApprovedCompleted(Builder $query): Builder
+    {
+        $now = now();
+        $date = $now->toDateString();
+        $time = $now->format('H:i:s');
+
+        return $query->where('status', 'approved')
+            ->where(function ($q) use ($date, $time) {
+                $q->whereNotNull('completed_at')
+                    ->orWhere(function ($q) use ($date, $time) {
+                        $q->whereRaw('COALESCE(end_date, date) < ?', [$date])
+                            ->orWhere(function ($q) use ($date, $time) {
+                                $q->whereRaw('COALESCE(end_date, date) = ?', [$date])
+                                    ->where('end_time', '<=', $time);
+                            });
+                    });
+            });
     }
 
     public function scopeOverlappingSchedule(
@@ -79,8 +242,11 @@ class Event extends Model
 
     public function reservedRoomIds(): array
     {
-        return $this->rooms()
-            ->pluck('rooms.id')
+        $roomIds = $this->relationLoaded('rooms')
+            ? $this->rooms->pluck('id')
+            : $this->rooms()->pluck('rooms.id');
+
+        return $roomIds
             ->when($this->room_id !== null, fn ($roomIds) => $roomIds->push($this->room_id))
             ->unique()
             ->values()

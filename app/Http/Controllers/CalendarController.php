@@ -16,14 +16,14 @@ class CalendarController extends Controller
 {
     public function index(Request $request)
     {
-        $events = $this->approvedEvents();
+        $events = self::approvedEvents();
 
         return view('pic.calendar', compact('events'));
     }
 
     public function picIndex(Request $request)
     {
-        $events = $this->approvedEvents();
+        $events = self::approvedEvents();
 
         return view('pic.calendar', compact('events'));
     }
@@ -92,7 +92,7 @@ class CalendarController extends Controller
         return response()->json($events);
     }
 
-    private function approvedEvents()
+    public static function approvedEvents()
     {
         return \App\Models\Event::with(['room', 'rooms', 'pic'])
             ->where('status', 'approved')
@@ -114,6 +114,13 @@ class CalendarController extends Controller
                     'allDay' => $event->room_id === null,
                     'date' => $event->date,
                     'end_date' => $event->end_date ?? $event->date,
+                    'start_time' => $event->start_time,
+                    'end_time' => $event->end_time,
+                    'lifecycle_status' => $event->lifecycle_status,
+                    'lifecycle_status_label' => $event->lifecycle_status_label,
+                    'lifecycle_badge_class' => $event->lifecycle_badge_class,
+                    'lifecycleStatus' => $event->lifecycle_status,
+                    'lifecycleStatusLabel' => $event->lifecycle_status_label,
                     ...$event->calendarColors(),
                 ];
             });

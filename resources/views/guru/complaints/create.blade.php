@@ -24,6 +24,11 @@
                             <option value="{{ $room->room_name }}" data-room-id="{{ $room->id }}" label="Kapasitas {{ $room->capacity }} orang"></option>
                         @endforeach
                     </datalist>
+                    <select id="room_select_sync" class="hidden" aria-hidden="true" tabindex="-1">
+                        @foreach ($rooms as $room)
+                            <option value="{{ $room->id }}" @selected(old('room_id', $selectedRoomId) == $room->id)>{{ $room->room_name }}</option>
+                        @endforeach
+                    </select>
                     <p class="mt-1 text-xs text-slate-500">Ruang yang terisi otomatis tetap bisa diganti. Ketik nama ruang lalu pilih hasil yang tersedia.</p>
                 </div>
                 <section class="rounded-lg border border-slate-200 bg-slate-50 p-4" aria-labelledby="complaint-reporter-heading">

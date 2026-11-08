@@ -22,7 +22,8 @@
                     <select name="status" aria-label="Filter status agenda" class="rounded-md border-gray-300 text-sm">
                         <option value="">Semua status</option>
                         <option value="pending" @selected(request('status') === 'pending')>Menunggu</option>
-                        <option value="in_progress" @selected(in_array(request('status'), ['in_progress', 'approved'], true))>Sedang Terlaksana</option>
+                        <option value="upcoming" @selected(request('status') === 'upcoming')>Belum Terlaksana</option>
+                        <option value="in_progress" @selected(request('status') === 'in_progress')>Sedang Terlaksana</option>
                         <option value="completed" @selected(request('status') === 'completed')>Sudah Terlaksana</option>
                         <option value="rejected" @selected(request('status') === 'rejected')>Ditolak</option>
                     </select>
@@ -34,40 +35,92 @@
                 @else
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
-                            <thead class="bg-gray-50 text-xs uppercase text-slate-500">
+                            <thead class="bg-gray-50/80 text-xs uppercase tracking-wider text-slate-500 border-b border-gray-200">
                                 <tr>
-                                    <th class="px-6 py-3">Nama Agenda</th>
-                                    <th class="px-6 py-3">Nama Ruangan</th>
-                                    <th class="px-6 py-3">Jadwal</th>
-                                    <th class="px-6 py-3">Status</th>
-                                    <th class="px-6 py-3">Catatan</th>
-                                    <th class="px-6 py-3">Aksi</th>
+                                    <th scope="col" class="px-6 py-3.5 font-bold">Nama Agenda</th>
+                                    <th scope="col" class="px-6 py-3.5 font-bold">Nama Ruangan</th>
+                                    <th scope="col" class="px-6 py-3.5 font-bold">Jadwal</th>
+                                    <th scope="col" class="px-6 py-3.5 font-bold">Status</th>
+                                    <th scope="col" class="px-6 py-3.5 font-bold">Catatan</th>
+                                    <th scope="col" class="px-6 py-3.5 font-bold text-right">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-100">
+                            <tbody class="divide-y divide-gray-100 bg-white">
                                 @foreach ($events as $event)
-                                    <tr>
-                                        <td class="px-6 py-4 font-medium text-slate-900">{{ $event->event_name }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ $event->room_names ?: '-' }}</td>
-                                        <td class="px-6 py-4 text-slate-600">
-                                            <x-event-date-range :start-date="$event->date" :end-date="$event->end_date" />
-                                            <x-event-time :start-time="$event->start_time" :end-time="$event->end_time" />
+                                    <tr class="align-middle hover:bg-slate-50/70 transition-colors">
+                                        <td class="px-6 py-3.5 align-middle">
+                                            <p class="font-semibold text-slate-900 text-sm sm:text-base leading-snug">{{ $event->event_name }}</p>
+                                            @if ($event->event_type)
+                                                <span class="mt-0.5 inline-block text-[11px] font-medium text-slate-500 uppercase tracking-wide">
+                                                    {{ config("event_types.{$event->event_type}.label") ?? ucfirst($event->event_type) }}
+                                                </span>
+                                            @endif
                                         </td>
-                                        <td class="px-6 py-4">
-                                            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $event->status === 'approved' ? ($event->completed_at ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800') : ($event->status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700') }}">{{ $event->status === 'approved' ? ($event->completed_at ? 'Sudah Terlaksana' : 'Sedang Terlaksana') : ($event->status === 'rejected' ? 'Ditolak' : 'Menunggu Persetujuan') }}</span>
+                                        <td class="px-6 py-3.5 align-middle font-medium text-slate-700 text-sm whitespace-nowrap">
+                                            {{ $event->room_names ?: '-' }}
                                         </td>
-                                        <td class="max-w-xs px-6 py-4 text-xs text-slate-500">
+                                        <td class="px-6 py-3.5 align-middle whitespace-nowrap">
+                                            @php
+                                                $startFormatted = date('H:i', strtotime($event->start_time));
+                                                $endFormatted = date('H:i', strtotime($event->end_time));
+                                                $sessionList = collect(config('schedule.sessions'));
+                                                $startSessionIndex = $sessionList->search(fn ($t) => $t['start_time'] === $startFormatted);
+                                                $endSessionIndex = $sessionList->search(fn ($t) => $t['end_time'] === $endFormatted);
+                                            @endphp
+                                            <div class="inline-flex items-center gap-2">
+                                                <span class="inline-flex items-center gap-1.5 font-semibold text-slate-900 text-sm">
+                                                    <svg class="h-4 w-4 text-amber-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                    <span><x-event-date-range :start-date="$event->date" :end-date="$event->end_date" /></span>
+                                                </span>
+
+                                                <span class="text-slate-300 font-semibold select-none">|</span>
+
+                                                <div class="inline-flex items-center gap-1.5">
+                                                    @if ($startSessionIndex !== false && $endSessionIndex !== false)
+                                                        <span class="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-900 shadow-2xs">
+                                                            Sesi {{ $startSessionIndex }}{{ $startSessionIndex !== $endSessionIndex ? '–' . $endSessionIndex : '' }}
+                                                        </span>
+                                                    @endif
+                                                    <span class="font-mono text-xs font-semibold text-slate-600">
+                                                        ({{ $startFormatted }} - {{ $endFormatted }})
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-3.5 align-middle whitespace-nowrap">
+                                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold {{ $event->lifecycle_badge_class }} border {{ str_contains($event->lifecycle_badge_class, 'amber') ? 'border-amber-200' : (str_contains($event->lifecycle_badge_class, 'emerald') ? 'border-emerald-200' : (str_contains($event->lifecycle_badge_class, 'blue') ? 'border-blue-200' : 'border-red-200')) }} shadow-2xs">
+                                                <span class="h-1.5 w-1.5 rounded-full {{ str_contains($event->lifecycle_badge_class, 'amber') ? 'bg-amber-500' : (str_contains($event->lifecycle_badge_class, 'emerald') ? 'bg-emerald-500 animate-pulse' : (str_contains($event->lifecycle_badge_class, 'blue') ? 'bg-blue-500' : 'bg-red-500')) }}"></span>
+                                                <span>{{ $event->lifecycle_status_label }}</span>
+                                            </span>
+                                        </td>
+                                        <td class="max-w-xs px-6 py-3.5 align-middle text-xs text-slate-500">
                                             @if ($event->move_reason)
                                                 <p><span class="font-semibold text-slate-700">Alasan pemindahan:</span> {{ $event->move_reason }}</p>
                                             @endif
                                             @if ($event->rejection_reason)
-                                                <p class="mt-1"><span class="font-semibold text-slate-700">Catatan:</span> {{ $event->rejection_reason }}</p>
+                                                <p class="mt-0.5"><span class="font-semibold text-slate-700">Catatan:</span> {{ $event->rejection_reason }}</p>
                                             @elseif (! $event->move_reason)
-                                                {{ $event->status === 'pending' ? 'Menunggu persetujuan Admin atau PIC.' : ($event->status === 'approved' ? ($event->completed_at ? 'Agenda telah ditandai sudah terlaksana.' : 'Agenda sedang terlaksana.') : 'Agenda ditolak.') }}
+                                                {{ $event->status === 'pending' ? 'Menunggu persetujuan Admin atau PIC.' : ($event->status === 'approved' ? ($event->lifecycle_status === 'completed' ? 'Agenda telah selesai terlaksana.' : ($event->lifecycle_status === 'in_progress' ? 'Agenda sedang terlaksana.' : 'Agenda belum terlaksana.')) : 'Agenda ditolak.') }}
                                             @endif
                                         </td>
-                                        <td class="px-6 py-4">
-                                            <a href="{{ route('guru.complaints.create', ['room_id' => $event->room_id]) }}" class="mt-2 inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-800">Buat Pengajuan Kerusakan</a>
+                                        <td class="px-6 py-3.5 align-middle text-right whitespace-nowrap">
+                                            @if ($event->room_id)
+                                                <a 
+                                                    href="{{ route('guru.complaints.create', ['room_id' => $event->room_id]) }}" 
+                                                    title="Buat Pengajuan Kerusakan"
+                                                    aria-label="Buat Pengajuan Kerusakan"
+                                                    class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50/70 px-2.5 py-1.5 text-xs font-semibold text-red-700 shadow-2xs transition hover:border-red-300 hover:bg-red-100 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                                >
+                                                    <svg width="14" height="14" class="text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    </svg>
+                                                    <span>Lapor Kerusakan</span>
+                                                </a>
+                                            @else
+                                                <span class="text-slate-400 text-xs">-</span>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach

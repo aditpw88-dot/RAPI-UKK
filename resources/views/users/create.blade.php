@@ -52,6 +52,26 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="gender" class="form-label">Jenis Kelamin</label>
+                            <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender">
+                                <option value="">-- Pilih Jenis Kelamin --</option>
+                                <option value="Laki-laki" {{ old('gender') == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
+                                <option value="Perempuan" {{ old('gender') == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
+                            </select>
+                            @error('gender')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mapel" class="form-label">Mata Pelajaran (Khusus Guru)</label>
+                            <input type="text" class="form-control @error('mapel') is-invalid @enderror" id="mapel" name="mapel" value="{{ old('mapel') }}" placeholder="Contoh: BAHASA INDONESIA, MATEMATIKA, IPAS">
+                            @error('mapel')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
                             <label for="role_id" class="form-label">Role <span class="text-danger">*</span></label>
                             <select class="form-select @error('role_id') is-invalid @enderror" id="role_id" name="role_id" required>
                                 <option value="">-- Pilih Role --</option>

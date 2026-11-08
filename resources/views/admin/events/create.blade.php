@@ -38,7 +38,6 @@
 
                 <fieldset>
                     <legend class="block text-sm font-semibold text-slate-700">Ruangan</legend>
-                    <p class="mt-1 text-sm text-slate-500">Pilih satu ruangan. Tekan “Tambah Ruang” jika perlu meminjam ruangan lain juga. Pengajuan ditolak jika ada ruangan yang sudah dipakai pada jadwal tersebut.</p>
                     <div id="room-selection-list" class="mt-3 space-y-3">
                         @foreach ($selectedRoomIds as $index => $selectedRoomId)
                             @php($currentRoom = $rooms->firstWhere('id', $selectedRoomId))
@@ -79,6 +78,10 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <p data-room-occupied-warning class="hidden mt-1.5 text-xs font-semibold text-red-600 flex items-center gap-1">
+                                        <svg class="h-3.5 w-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                        <span data-warning-text>Ruangan ini sedang dipakai pada jadwal tersebut.</span>
+                                    </p>
                                 </div>
                                 <button type="button" data-remove-room class="hidden rounded-md border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Hapus</button>
                             </div>
@@ -121,6 +124,10 @@
                                         </div>
                                     </div>
                                 </div>
+                                <p data-room-occupied-warning class="hidden mt-1.5 text-xs font-semibold text-red-600 flex items-center gap-1">
+                                    <svg class="h-3.5 w-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                    <span data-warning-text>Ruangan ini sedang dipakai pada jadwal tersebut.</span>
+                                </p>
                             </div>
                             <button type="button" data-remove-room class="rounded-md border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Hapus</button>
                         </div>
@@ -139,7 +146,6 @@
                     <div>
                         <label for="end_date" class="block text-sm font-semibold text-slate-700">Tanggal Selesai</label>
                         <input id="end_date" name="end_date" type="date" value="{{ old('end_date', old('date', request('date'))) }}" min="{{ old('date', request('date', now()->toDateString())) }}" required class="mt-2 w-full rounded-md border-gray-300 text-sm">
-                        <p class="mt-2 text-sm text-slate-500">Jam sesi yang dipilih berlaku setiap hari selama rentang ini.</p>
                     </div>
                 </div>
 
@@ -177,9 +183,177 @@
 </x-app-layout>
 
 <script>
+    const bookedEvents = @json($bookedEvents ?? []);
+    const sessionTimes = @json(config('schedule.sessions'));
+
     const roomSelectionList = document.getElementById('room-selection-list');
     const roomSelectTemplate = document.getElementById('room-select-template');
     const addRoomButton = document.getElementById('add-room-button');
+
+    function getEventLifecycle(ev) {
+        if (ev.lifecycle_status === 'rejected') {
+            return 'rejected';
+        }
+
+        const now = new Date();
+        const startDate = ev.date;
+        const endDate = ev.end_date || ev.date;
+        const startTime = ev.start_time || '00:00';
+        const endTime = ev.end_time || '23:59';
+
+        const startDt = new Date(`${startDate}T${startTime}:00`);
+        const endDt = new Date(`${endDate}T${endTime}:00`);
+
+        // 1. Sudah terlaksana jika waktu saat ini sudah melewati waktu selesai agenda
+        if (now >= endDt) {
+            return 'completed'; // Sudah Terlaksana
+        }
+
+        // 2. Belum terlaksana / Akan berlangsung jika waktu saat ini belum mencapai waktu mulai agenda
+        if (now < startDt) {
+            return 'upcoming'; // Akan Berlangsung
+        }
+
+        // 3. Sedang terlaksana / Sedang berlangsung jika waktu saat ini berada dalam rentang agenda
+        return 'in_progress'; // Sedang Berlangsung
+    }
+
+    function getOccupiedRoomIds() {
+        const startDateInput = document.getElementById('date');
+        const endDateInput = document.getElementById('end_date');
+        const startSessionInput = document.getElementById('start_session');
+        const endSessionInput = document.getElementById('end_session');
+
+        const startDate = startDateInput?.value?.trim() || '';
+        const endDate = endDateInput?.value?.trim() || startDate;
+        const startSession = startSessionInput?.value || '';
+        const endSession = endSessionInput?.value || '';
+
+        const occupiedMap = new Map();
+
+        if (startDate) {
+            let sessionStartTime = '00:00';
+            let sessionEndTime = '23:59';
+            const hasSession = Boolean(startSession && endSession && sessionTimes[startSession] && sessionTimes[endSession]);
+
+            if (hasSession) {
+                sessionStartTime = sessionTimes[startSession].start_time;
+                sessionEndTime = sessionTimes[endSession].end_time;
+            }
+
+            bookedEvents.forEach((ev) => {
+                const lifecycle = getEventLifecycle(ev);
+
+                // ATURAN: Jika agenda tersebut sudah terlaksana maka status ruangannya adalah "tersedia"
+                if (lifecycle === 'completed' || lifecycle === 'rejected') {
+                    return;
+                }
+
+                // ATURAN: Jika ada agenda yang akan berlangsung atau sedang berlangsung maka ruangan itu statusnya adalah "dipakai"
+                const evStartDate = ev.date;
+                const evEndDate = ev.end_date || ev.date;
+                const evStartTime = ev.start_time;
+                const evEndTime = ev.end_time;
+
+                const dateOverlap = evStartDate <= endDate && evEndDate >= startDate;
+                const timeOverlap = hasSession
+                    ? (evStartTime < sessionEndTime && evEndTime > sessionStartTime)
+                    : true;
+
+                if (dateOverlap && timeOverlap) {
+                    const statusLabel = lifecycle === 'in_progress' ? 'Sedang Berlangsung' : 'Akan Berlangsung';
+                    (ev.room_ids || []).forEach((roomId) => {
+                        const idStr = String(roomId);
+                        if (!occupiedMap.has(idStr)) {
+                            occupiedMap.set(idStr, {
+                                eventName: ev.event_name,
+                                time: `${evStartTime} - ${evEndTime}`,
+                                statusLabel: statusLabel,
+                                date: evStartDate === evEndDate ? evStartDate : `${evStartDate} s/d ${evEndDate}`
+                            });
+                        }
+                    });
+                }
+            });
+        } else {
+            // Ketika belum memilih tanggal: periksa seluruh agenda
+            bookedEvents.forEach((ev) => {
+                const lifecycle = getEventLifecycle(ev);
+
+                // ATURAN: Jika agenda tersebut sudah terlaksana maka status ruangannya adalah "tersedia"
+                if (lifecycle === 'completed' || lifecycle === 'rejected') {
+                    return;
+                }
+
+                // ATURAN: Jika ada agenda yang akan berlangsung atau sedang berlangsung maka ruangan itu statusnya adalah "dipakai"
+                if (lifecycle === 'in_progress' || lifecycle === 'upcoming' || lifecycle === 'pending') {
+                    const statusLabel = lifecycle === 'in_progress' ? 'Sedang Berlangsung' : 'Akan Berlangsung';
+                    (ev.room_ids || []).forEach((roomId) => {
+                        const idStr = String(roomId);
+                        if (!occupiedMap.has(idStr)) {
+                            occupiedMap.set(idStr, {
+                                eventName: ev.event_name,
+                                time: `${ev.start_time} - ${ev.end_time}`,
+                                statusLabel: statusLabel,
+                                date: ev.date === ev.end_date || !ev.end_date ? ev.date : `${ev.date} s/d ${ev.end_date}`
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        return occupiedMap;
+    }
+
+    function updateRoomAvailabilityBadges() {
+        const occupiedMap = getOccupiedRoomIds();
+
+        document.querySelectorAll('[data-room-status-badge]').forEach((badge) => {
+            const roomId = badge.dataset.roomStatusBadge;
+            const isOccupied = occupiedMap.has(String(roomId));
+
+            if (isOccupied) {
+                badge.textContent = 'Dipakai';
+                badge.className = 'text-xs px-2 py-0.5 rounded-full font-semibold bg-red-100 text-red-700';
+                const li = badge.closest('li');
+                if (li) {
+                    li.classList.add('bg-red-50/40');
+                }
+            } else {
+                badge.textContent = 'Tersedia';
+                badge.className = 'text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60';
+                const li = badge.closest('li');
+                if (li) {
+                    li.classList.remove('bg-red-50/40');
+                }
+            }
+        });
+
+        document.querySelectorAll('[data-room-row]').forEach((row) => {
+            const select = row.querySelector('[data-room-select]');
+            const input = row.querySelector('[data-combobox-input]');
+            const warningEl = row.querySelector('[data-room-occupied-warning]');
+            const warningText = row.querySelector('[data-warning-text]');
+
+            if (!select || !input || !warningEl) return;
+
+            const selectedVal = select.value;
+            if (selectedVal && occupiedMap.has(String(selectedVal))) {
+                const info = occupiedMap.get(String(selectedVal));
+                if (warningText) {
+                    warningText.textContent = info?.eventName
+                        ? `Ruangan ini berstatus Dipakai (${info.statusLabel}: "${info.eventName}" pada ${info.date} pukul ${info.time}).`
+                        : 'Ruangan ini berstatus Dipakai (ada agenda yang sedang atau akan berlangsung).';
+                }
+                warningEl.classList.remove('hidden');
+                input.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+            } else {
+                warningEl.classList.add('hidden');
+                input.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
+            }
+        });
+    }
 
     function initRoomCombobox(comboboxEl) {
         if (!comboboxEl || comboboxEl.dataset.initialized === 'true') {
@@ -216,13 +390,21 @@
                 nameSpan.textContent = opt.dataset.name || opt.text.split(' (')[0];
                 nameWrap.append(nameSpan);
 
+                const rightWrap = document.createElement('div');
+                rightWrap.className = 'flex items-center gap-2';
+
+                const statusSpan = document.createElement('span');
+                statusSpan.dataset.roomStatusBadge = opt.value;
+                statusSpan.className = 'text-xs px-2 py-0.5 rounded-full font-medium';
+
                 const capSpan = document.createElement('span');
                 capSpan.className = 'text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full';
                 capSpan.textContent = opt.dataset.capacity
                     ? `Kapasitas ${opt.dataset.capacity}`
                     : (opt.text.includes('Kapasitas') ? opt.text.split('(')[1]?.replace(')', '') : '');
 
-                li.append(nameWrap, capSpan);
+                rightWrap.append(statusSpan, capSpan);
+                li.append(nameWrap, rightWrap);
 
                 li.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -240,6 +422,7 @@
             input.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
             closeDropdown();
             select.dispatchEvent(new Event('change', { bubbles: true }));
+            updateRoomAvailabilityBadges();
         }
 
         function openDropdown() {
@@ -252,6 +435,7 @@
 
             dropdown.classList.remove('hidden');
             arrow?.classList.add('rotate-180');
+            updateRoomAvailabilityBadges();
             filterList(input.value);
         }
 
@@ -266,6 +450,7 @@
                 input.value = '';
                 select.value = '';
             }
+            updateRoomAvailabilityBadges();
         }
 
         function isOpen() {
@@ -279,7 +464,8 @@
             let matchCount = 0;
 
             Array.from(list.children).forEach((item) => {
-                const matches = isFullMatch || item.dataset.text.toLowerCase().includes(q);
+                const itemFullText = (item.textContent || '').toLowerCase();
+                const matches = isFullMatch || item.dataset.text.toLowerCase().includes(q) || itemFullText.includes(q);
                 if (matches) {
                     item.classList.remove('hidden');
                     matchCount++;
@@ -316,6 +502,7 @@
             if (input.value.trim() === '') {
                 select.value = '';
                 select.dispatchEvent(new Event('change', { bubbles: true }));
+                updateRoomAvailabilityBadges();
             }
         });
 
@@ -417,13 +604,18 @@
     // Initialize existing comboboxes
     document.querySelectorAll('[data-room-combobox]').forEach(initRoomCombobox);
 
-    roomSelectionList?.addEventListener('change', updateRoomSelections);
+    roomSelectionList?.addEventListener('change', () => {
+        updateRoomSelections();
+        updateRoomAvailabilityBadges();
+    });
+
     roomSelectionList?.addEventListener('click', (event) => {
         const removeButton = event.target.closest('[data-remove-room]');
         if (removeButton && roomSelectionList.querySelectorAll('[data-room-row]').length > 1) {
             removeButton.closest('[data-room-row]').remove();
             updateRowNumbers();
             updateRoomSelections();
+            updateRoomAvailabilityBadges();
         }
     });
 
@@ -448,6 +640,7 @@
         roomSelectionList.append(row);
         initRoomCombobox(combobox);
         updateRoomSelections();
+        updateRoomAvailabilityBadges();
         input.focus();
     });
 
@@ -475,21 +668,34 @@
     });
 
     document.querySelector('form')?.addEventListener('submit', (e) => {
+        const occupiedMap = getOccupiedRoomIds();
         const roomSelects = document.querySelectorAll('[data-room-select]');
         let firstInvalid = null;
+        let hasOccupiedError = false;
+
         roomSelects.forEach((select) => {
+            const input = select.closest('[data-room-combobox]')?.querySelector('[data-combobox-input]');
             if (!select.value) {
-                const input = select.closest('[data-room-combobox]')?.querySelector('[data-combobox-input]');
+                if (input) {
+                    input.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+                    if (!firstInvalid) firstInvalid = input;
+                }
+            } else if (occupiedMap.has(String(select.value))) {
+                hasOccupiedError = true;
                 if (input) {
                     input.classList.add('border-red-500', 'ring-1', 'ring-red-500');
                     if (!firstInvalid) firstInvalid = input;
                 }
             }
         });
+
         if (firstInvalid) {
             e.preventDefault();
             firstInvalid.focus();
             firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (hasOccupiedError) {
+                alert('Ruangan yang dipilih sedang dipakai pada jadwal tersebut. Silakan pilih ruangan lain.');
+            }
         }
     });
 
@@ -503,7 +709,14 @@
         if (adminEndDate.value && adminEndDate.value < adminStartDate.value) {
             adminEndDate.value = adminStartDate.value;
         }
+        updateRoomAvailabilityBadges();
     });
+    adminStartDate?.addEventListener('input', updateRoomAvailabilityBadges);
+
+    adminEndDate?.addEventListener('change', updateRoomAvailabilityBadges);
+    adminEndDate?.addEventListener('input', updateRoomAvailabilityBadges);
+
+    updateRoomAvailabilityBadges();
 </script>
 
 <script>
@@ -521,8 +734,16 @@
             : `Pilih sesi ${label.toLowerCase()} untuk melihat jam mulai dan selesai sesi.`;
     }
 
-    startSession?.addEventListener('change', () => updateSessionTime(startSession, startSessionTime, 'mulai'));
-    endSession?.addEventListener('change', () => updateSessionTime(endSession, endSessionTime, 'selesai'));
+    startSession?.addEventListener('change', () => {
+        updateSessionTime(startSession, startSessionTime, 'mulai');
+        updateRoomAvailabilityBadges();
+    });
+    endSession?.addEventListener('change', () => {
+        updateSessionTime(endSession, endSessionTime, 'selesai');
+        updateRoomAvailabilityBadges();
+    });
     updateSessionTime(startSession, startSessionTime, 'mulai');
     updateSessionTime(endSession, endSessionTime, 'selesai');
+    updateRoomAvailabilityBadges();
+    setInterval(updateRoomAvailabilityBadges, 30000);
 </script>

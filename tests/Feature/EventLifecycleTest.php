@@ -20,6 +20,12 @@ class EventLifecycleTest extends TestCase
         $pic = $this->createUser('event-pic', 'PIC Ruang');
         $room = $this->createRoom($pic);
         $event = $this->createEvent($room, $pic);
+        $event->update([
+            'date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+            'start_time' => now()->subHour()->format('H:i:s'),
+            'end_time' => now()->addHour()->format('H:i:s'),
+        ]);
 
         $this->actingAs($admin)
             ->post(route('admin.events.approve', $event))
@@ -45,6 +51,12 @@ class EventLifecycleTest extends TestCase
         $pic = $this->createUser('room-pic', 'PIC Ruang');
         $room = $this->createRoom($pic);
         $event = $this->createEvent($room, $this->createUser('teacher', 'Guru/Organisasi'));
+        $event->update([
+            'date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+            'start_time' => now()->subHour()->format('H:i:s'),
+            'end_time' => now()->addHour()->format('H:i:s'),
+        ]);
 
         $this->actingAs($pic)
             ->post(route('pic.events.approve', $event))
@@ -111,6 +123,36 @@ class EventLifecycleTest extends TestCase
         } finally {
             Carbon::setTestNow();
         }
+    }
+
+    public function test_event_lifecycle_adapts_to_current_laptop_time(): void
+    {
+        $pic = $this->createUser('event-time-owner', 'PIC Ruang');
+        $room = $this->createRoom($pic);
+        $event = $this->createEvent($room, $pic, 'approved');
+        $event->update([
+            'date' => '2026-11-06',
+            'end_date' => '2026-11-06',
+            'start_time' => '08:00:00',
+            'end_time' => '09:00:00',
+        ]);
+
+        // Jam 07:00 (Sebelum jam agenda) -> Belum Terlaksana
+        Carbon::setTestNow(Carbon::parse('2026-11-06 07:00:00'));
+        $this->assertSame('upcoming', $event->lifecycle_status);
+        $this->assertSame('Belum Terlaksana', $event->lifecycle_status_label);
+
+        // Jam 08:30 (Sedang jam agenda) -> Sedang Terlaksana
+        Carbon::setTestNow(Carbon::parse('2026-11-06 08:30:00'));
+        $this->assertSame('in_progress', $event->lifecycle_status);
+        $this->assertSame('Sedang Terlaksana', $event->lifecycle_status_label);
+
+        // Jam 09:00 (Lewat/selesai jam agenda) -> Sudah Terlaksana
+        Carbon::setTestNow(Carbon::parse('2026-11-06 09:00:00'));
+        $this->assertSame('completed', $event->lifecycle_status);
+        $this->assertSame('Sudah Terlaksana', $event->lifecycle_status_label);
+
+        Carbon::setTestNow();
     }
 
     private function createUser(string $username, string $roleName): User

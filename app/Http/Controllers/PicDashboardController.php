@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\Room;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,11 @@ class PicDashboardController extends Controller
 
         $this->ensurePic();
 
-        $rooms = $user->rooms()->orderBy('room_name')->get();
+        $rawRooms = $user->rooms()->with(['pics', 'pic'])->get();
+        if ($rawRooms->isEmpty()) {
+            $rawRooms = Room::with(['pics', 'pic'])->get();
+        }
+        $rooms = Room::sortRooms($rawRooms);
         $roomIds = $rooms->pluck('id');
 
         $events = Event::with(['room', 'rooms'])
@@ -30,13 +35,46 @@ class PicDashboardController extends Controller
         return view('pic.dashboard', compact('rooms', 'events', 'pendingEvents'));
     }
 
+    public function rooms(Request $request): View
+    {
+        $this->ensurePic();
+
+        $user = Auth::user();
+        $query = $user->rooms()->with(['pics', 'pic']);
+        if ($user->rooms()->count() === 0) {
+            $query = Room::with(['pics', 'pic']);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->query('search'));
+            $query->where('room_name', 'like', "%{$search}%");
+        }
+
+        if ($request->filled('active')) {
+            $active = $request->query('active');
+            if ($active === 'active') {
+                $query->where(function ($q) {
+                    $q->where('is_active', 'Aktif')->orWhere('is_active', '1');
+                });
+            } elseif ($active === 'inactive') {
+                $query->where(function ($q) {
+                    $q->where('is_active', 'Tidak aktif')->orWhere('is_active', '0');
+                });
+            }
+        }
+
+        $rooms = Room::paginateRooms($query->get(), 10, $request);
+
+        return view('pic.rooms.index', compact('rooms'));
+    }
+
     public function approvals(): View
     {
         $this->ensurePic();
 
-        $roomIds = Auth::user()->rooms()->pluck('rooms.id');
+        $roomIds = $this->getPicRoomIds();
         $events = Event::with(['room', 'rooms', 'pic'])
-            ->forRooms($roomIds->all())
+            ->forRooms($roomIds)
             ->where('status', 'pending')
             ->orderBy('date')
             ->orderBy('start_time')
@@ -45,27 +83,72 @@ class PicDashboardController extends Controller
         return view('pic.approvals', compact('events'));
     }
 
-    public function approvedEvents(): View
+    public function approvedEvents(Request $request): View
     {
         $this->ensurePic();
 
-        $roomIds = Auth::user()->rooms()->pluck('rooms.id');
-        $approvedEvents = Event::with(['room', 'rooms', 'pic'])
-            ->where('approved_by', Auth::id())
-            ->where('status', 'approved')
-            ->orderByDesc('date')
-            ->orderBy('start_time')
-            ->get();
-        $inProgressEvents = $approvedEvents->whereNull('completed_at');
-        $completedEvents = $approvedEvents->whereNotNull('completed_at');
-        $rejectedEvents = Event::with(['room', 'rooms', 'pic'])
-            ->forRooms($roomIds->all())
-            ->where('status', 'rejected')
-            ->orderByDesc('date')
-            ->orderBy('start_time')
+        $roomIds = $this->getPicRoomIds();
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'in:upcoming,in_progress,completed,rejected'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
+        ]);
+        $search = trim($filters['search'] ?? '');
+
+        $query = Event::with(['room', 'rooms', 'pic', 'approver.role'])
+            ->forRooms($roomIds)
+            ->whereIn('status', ['approved', 'rejected'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('event_name', 'like', "%{$search}%")
+                        ->orWhereHas('rooms', fn ($query) => $query->where('room_name', 'like', "%{$search}%"))
+                        ->orWhereHas('room', fn ($query) => $query->where('room_name', 'like', "%{$search}%"))
+                        ->orWhereHas('pic', fn ($query) => $query->where('fullname', 'like', "%{$search}%"));
+                });
+            })
+            ->when(isset($filters['status']), function ($query) use ($filters) {
+                match ($filters['status']) {
+                    'upcoming' => $query->approvedUpcoming(),
+                    'in_progress' => $query->approvedInProgress(),
+                    'completed' => $query->approvedCompleted(),
+                    'rejected' => $query->where('status', 'rejected'),
+                    default => null,
+                };
+            })
+            ->when(isset($filters['date_from']), fn ($query) => $query->whereRaw('COALESCE(end_date, date) >= ?', [$filters['date_from']]))
+            ->when(isset($filters['date_to']), fn ($query) => $query->whereDate('date', '<=', $filters['date_to']))
             ->get();
 
-        return view('pic.approved-events', compact('inProgressEvents', 'completedEvents', 'rejectedEvents'));
+        $sortedEvents = Event::sortByLifecycle($query);
+
+        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?: 1;
+        $perPage = 5;
+        $events = new \Illuminate\Pagination\LengthAwarePaginator(
+            $sortedEvents->forPage($page, $perPage)->values(),
+            $sortedEvents->count(),
+            $perPage,
+            $page,
+            [
+                'path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
+                'pageName' => 'page',
+            ]
+        );
+        $events->appends($request->query());
+
+        $upcomingEvents = $sortedEvents->where('lifecycle_status', 'upcoming');
+        $inProgressEvents = $sortedEvents->where('lifecycle_status', 'in_progress');
+        $completedEvents = $sortedEvents->where('lifecycle_status', 'completed');
+        $rejectedEvents = $sortedEvents->where('status', 'rejected');
+
+        return view('pic.approved-events', compact(
+            'events',
+            'upcomingEvents',
+            'inProgressEvents',
+            'completedEvents',
+            'rejectedEvents'
+        ));
     }
 
     public function approve(Event $event): RedirectResponse
@@ -122,16 +205,30 @@ class PicDashboardController extends Controller
         return back()->with('success', 'Pengajuan berhasil ditolak.');
     }
 
+    private function getPicRoomIds(): array
+    {
+        $user = Auth::user();
+        $roomIds = $user->rooms()->pluck('rooms.id')->all();
+        if (empty($roomIds)) {
+            $roomIds = Room::pluck('id')->all();
+        }
+
+        return $roomIds;
+    }
+
     private function ensureCanManage(Event $event): void
     {
         $user = Auth::user();
 
         $roleName = strtolower($user->role?->role_name ?? '');
-        $isAdmin = str_contains($roleName, 'admin') || str_contains($roleName, 'waka');
-        $isAssignedPic = str_contains($roleName, 'pic')
-            && $user->rooms()->whereIn('rooms.id', $event->reservedRoomIds())->exists();
+        $isPic = str_contains($roleName, 'pic');
+        $hasSpecificRooms = $user->rooms()->exists();
+        $isAssignedPic = $isPic && (
+            ! $hasSpecificRooms
+            || $user->rooms()->whereIn('rooms.id', $event->reservedRoomIds())->exists()
+        );
 
-        if (! $isAdmin && ! $isAssignedPic) {
+        if (! $isAssignedPic) {
             abort(403, 'Anda tidak memiliki akses untuk memproses pengajuan ini.');
         }
     }
@@ -140,8 +237,14 @@ class PicDashboardController extends Controller
     {
         $user = Auth::user();
 
-        if (! str_contains(strtolower($user->role?->role_name ?? ''), 'pic')
-            || ! $user->rooms()->whereIn('rooms.id', $event->reservedRoomIds())->exists()) {
+        $isPic = str_contains(strtolower($user->role?->role_name ?? ''), 'pic');
+        $hasSpecificRooms = $user->rooms()->exists();
+        $hasAccess = $isPic && (
+            ! $hasSpecificRooms
+            || $user->rooms()->whereIn('rooms.id', $event->reservedRoomIds())->exists()
+        );
+
+        if (! $hasAccess) {
             abort(403, 'Hanya PIC ruang yang dapat menolak pengajuan ini.');
         }
     }

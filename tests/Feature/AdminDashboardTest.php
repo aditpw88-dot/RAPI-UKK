@@ -20,7 +20,8 @@ class AdminDashboardTest extends TestCase
             ->assertSee('href="'.route('dashboard').'" class="nav-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm nav-active" title="Dashboard"', false)
             ->assertDontSee('Ruang Kosong Hari Ini')
             ->assertSee('Agenda Terbaru')
-            ->assertSee('Akses Cepat');
+            ->assertSee('Akses Cepat')
+            ->assertSee('Tambah User');
     }
 
     private function createUser(): User

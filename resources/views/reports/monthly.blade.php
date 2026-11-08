@@ -35,10 +35,11 @@
                     <p class="text-sm text-slate-600">Dicetak pada: {{ now()->format('d/m/Y H:i') }}</p>
                 </header>
 
-                <section class="grid gap-3 sm:grid-cols-3">
+                <section class="grid gap-3 sm:grid-cols-4">
                     <div class="rounded-lg bg-slate-50 p-4"><p class="text-xs uppercase text-slate-500">Total Peminjaman</p><p class="mt-1 text-2xl font-bold">{{ $events->count() }}</p></div>
-                    <div class="rounded-lg bg-amber-50 p-4"><p class="text-xs uppercase text-amber-800">Sedang Terlaksana</p><p class="mt-1 text-2xl font-bold text-amber-900">{{ $events->where('status', 'approved')->whereNull('completed_at')->count() }}</p></div>
-                    <div class="rounded-lg bg-blue-50 p-4"><p class="text-xs uppercase text-blue-700">Sudah Terlaksana</p><p class="mt-1 text-2xl font-bold text-blue-800">{{ $events->where('status', 'approved')->whereNotNull('completed_at')->count() }}</p></div>
+                    <div class="rounded-lg bg-yellow-50 p-4"><p class="text-xs uppercase text-amber-800">Belum Terlaksana</p><p class="mt-1 text-2xl font-bold text-amber-900">{{ $events->where('lifecycle_status', 'upcoming')->count() }}</p></div>
+                    <div class="rounded-lg bg-emerald-50 p-4"><p class="text-xs uppercase text-emerald-800">Sedang Terlaksana</p><p class="mt-1 text-2xl font-bold text-emerald-900">{{ $events->where('lifecycle_status', 'in_progress')->count() }}</p></div>
+                    <div class="rounded-lg bg-blue-50 p-4"><p class="text-xs uppercase text-blue-700">Sudah Terlaksana</p><p class="mt-1 text-2xl font-bold text-blue-800">{{ $events->where('lifecycle_status', 'completed')->count() }}</p></div>
                 </section>
 
                 <section>

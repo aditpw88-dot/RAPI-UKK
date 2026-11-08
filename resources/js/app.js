@@ -55,6 +55,10 @@ document.addEventListener('submit', (event) => {
         return;
     }
 
+    if (event.defaultPrevented) {
+        return;
+    }
+
     if (confirmedForms.has(form)) {
         confirmedForms.delete(form);
         return;

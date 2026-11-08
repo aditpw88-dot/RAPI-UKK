@@ -49,10 +49,18 @@ class CalendarTest extends TestCase
 
     public function test_calendars_show_agenda_names_and_open_the_full_day_list_before_details(): void
     {
+        $picRole = Role::firstOrCreate(['role_name' => 'PIC Ruang']);
+        $pic = User::create([
+            'username' => 'pic-cal',
+            'fullname' => 'PIC Calendar',
+            'email' => 'pic-cal@example.com',
+            'password' => 'password',
+            'role_id' => $picRole->id,
+        ]);
         $room = Room::create([
             'room_name' => 'Ruang Detail Agenda',
             'capacity' => 30,
-            'pic_id' => null,
+            'pic_id' => $pic->id,
             'is_active' => 'Aktif',
         ]);
         $event = Event::create([
@@ -74,7 +82,7 @@ class CalendarTest extends TestCase
                 ->assertDontSee('"title":"Rapat Koordinasi (Ruang Detail Agenda)"', false)
                 ->assertSee('"roomName":"Ruang Detail Agenda"', false)
                 ->assertSee('dayMaxEvents: 3', false)
-                ->assertSee('showDateAgendas(info.event.startStr.slice(0, 10))', false)
+                ->assertSee('showDateAgendas(clickedDate)', false)
                 ->assertSee('showEventDetails(event, dateString)', false);
         }
     }

@@ -23,16 +23,27 @@ class GuruDashboardController extends Controller
             ->latest('date')
             ->latest('start_time')
             ->get();
-        $inProgressEvents = $events->where('status', 'approved')->whereNull('completed_at')->count();
+        $inProgressEvents = $events->where('lifecycle_status', 'in_progress')->count();
+        $pendingEvents = $events->where('status', 'pending')->count();
+        $approvedEventsCount = $events->where('status', 'approved')->count();
 
         $openComplaints = Complaint::where('reporter_id', $user->id)
             ->where('status_repair', '!=', 'Sudah Diperbaiki')
             ->count();
 
+        $recentComplaints = Complaint::with(['room'])
+            ->where('reporter_id', $user->id)
+            ->latest('reported_at')
+            ->take(5)
+            ->get();
+
         return view('guru.dashboard', [
             'events' => $events,
             'approvedEvents' => $inProgressEvents,
+            'pendingEvents' => $pendingEvents,
+            'approvedEventsCount' => $approvedEventsCount,
             'openComplaints' => $openComplaints,
+            'recentComplaints' => $recentComplaints,
         ]);
     }
 
@@ -92,7 +103,7 @@ class GuruDashboardController extends Controller
 
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', 'in:pending,approved,in_progress,completed,rejected'],
+            'status' => ['nullable', 'in:pending,approved,upcoming,in_progress,completed,rejected'],
         ]);
         $search = trim($filters['search'] ?? '');
 
@@ -106,14 +117,16 @@ class GuruDashboardController extends Controller
             })
             ->when(isset($filters['status']), function ($query) use ($filters) {
                 match ($filters['status']) {
-                    'in_progress', 'approved' => $query->where('status', 'approved')->whereNull('completed_at'),
-                    'completed' => $query->where('status', 'approved')->whereNotNull('completed_at'),
+                    'upcoming' => $query->approvedUpcoming(),
+                    'in_progress' => $query->approvedInProgress(),
+                    'completed' => $query->approvedCompleted(),
+                    'approved' => $query->where('status', 'approved'),
                     default => $query->where('status', $filters['status']),
                 };
             })
-            ->latest('date')
-            ->latest('start_time')
             ->get();
+
+        $events = Event::sortByLifecycle($events);
 
         return view('guru.events.history', [
             'events' => $events,

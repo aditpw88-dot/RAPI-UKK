@@ -36,6 +36,8 @@ class User extends Authenticatable
         'fullname',
         'email',
         'phone_number',
+        'gender',
+        'mapel',
         'password',
         'otp',
         'otp_expires_at',
@@ -73,8 +75,8 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
-    public function rooms(): HasMany
+    public function rooms(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->hasMany(Room::class, 'pic_id');
+        return $this->belongsToMany(Room::class, 'room_pic', 'user_id', 'room_id');
     }
 }

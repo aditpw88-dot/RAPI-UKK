@@ -13,33 +13,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
 Route::get('/', function () {
-    $events = [];
-
-    if (Schema::hasTable('events') && Schema::hasTable('rooms')) {
-        $events = Event::with(['room', 'rooms', 'pic'])
-            ->where('status', 'approved')
-            ->get()
-            ->map(function ($event) {
-                return [
-                    'id' => $event->id,
-                    'title' => $event->event_name,
-                    'eventName' => $event->event_name,
-                    'roomName' => $event->room_id ? ($event->room_names ?: 'Ruang') : 'Seluruh sekolah',
-                    'eventType' => $event->event_type,
-                    'picName' => $event->pic?->fullname ?? $event->pic?->name ?? 'Pihak Sekolah',
-                    'createdAt' => $event->created_at?->toIso8601String() ?? '',
-                    'event_type' => $event->event_type,
-                    'start' => $event->room_id ? $event->date.'T'.$event->start_time : $event->date,
-                    'end' => $event->room_id
-                        ? ($event->end_date ?? $event->date).'T'.$event->end_time
-                        : \Illuminate\Support\Carbon::parse($event->end_date ?? $event->date)->addDay()->toDateString(),
-                    'allDay' => $event->room_id === null,
-                    'date' => $event->date,
-                    'end_date' => $event->end_date ?? $event->date,
-                    ...$event->calendarColors(),
-                ];
-            });
-    }
+    $events = Schema::hasTable('events') && Schema::hasTable('rooms')
+        ? CalendarController::approvedEvents()
+        : collect();
 
     return view('welcome', compact('events'));
 })->name('home');
@@ -98,6 +74,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/pic/dashboard', [PicDashboardController::class, 'index'])
         ->name('pic.dashboard');
+    Route::get('/pic/rooms', [PicDashboardController::class, 'rooms'])
+        ->name('pic.rooms');
     Route::get('/pic/approvals', [PicDashboardController::class, 'approvals'])
         ->name('pic.approvals');
     Route::get('/pic/approved-events', [PicDashboardController::class, 'approvedEvents'])

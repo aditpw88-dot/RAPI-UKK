@@ -55,8 +55,7 @@ class UserController extends Controller
      */
     public function create()
     {
-        $roles = Role::all();
-        return view('users.create', compact('roles'));
+        return redirect()->route('users.index', ['create' => 1]);
     }
 
     /**
@@ -69,6 +68,8 @@ class UserController extends Controller
             'email' => 'required|string|email|unique:users|max:255',
             'password' => 'required|string|min:8|confirmed',
             'phone_number' => 'nullable|string|max:15',
+            'gender' => 'nullable|string|max:50',
+            'mapel' => 'nullable|string|max:255',
             'role_id' => 'required|exists:roles,id',
         ]);
 
@@ -94,7 +95,7 @@ class UserController extends Controller
             $guideSheet->fromArray([
                 ['Panduan Mengisi Contoh File User'],
                 ['1. Unduh contoh file, lalu isi satu baris untuk setiap user.'],
-                ['2. Isi nama, email, password, dan pilih role: Admin, Guru/Organisasi, PIC Ruang, Siswa, Waka Sapras.'],
+                ['2. Isi nama, email, password, dan pilih role: Admin/Waka, Guru/Organisasi, PIC Ruang.'],
                 ['3. Nomor telepon boleh dikosongkan. Username akan dibuat otomatis.'],
                 ['4. Unggah file Excel atau CSV (maksimal 500 user, ukuran 5 MB).'],
             ], null, 'A1');
@@ -300,6 +301,8 @@ class UserController extends Controller
             'fullname' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'phone_number' => 'nullable|string|max:15',
+            'gender' => 'nullable|string|max:50',
+            'mapel' => 'nullable|string|max:255',
             'role_id' => 'required|exists:roles,id',
         ]);
 

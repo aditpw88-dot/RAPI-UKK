@@ -87,6 +87,73 @@ class RoomManagementTest extends TestCase
             ->assertDontSee('<p class="text-lg font-semibold text-slate-900">Lab Identitas</p>', false);
     }
 
+    public function test_admin_rooms_page_is_paginated_with_10_rooms_per_page(): void
+    {
+        $adminRole = $this->createRole('Admin');
+        $picRole = $this->createRole('PIC Ruang');
+        $admin = $this->createUser('admin-page', $adminRole);
+        $pic = $this->createUser('pic-page', $picRole);
+
+        for ($i = 1; $i <= 15; $i++) {
+            Room::create([
+                'room_name' => "Lab {$i}",
+                'capacity' => 36,
+                'pic_id' => $pic->id,
+                'is_active' => 'Aktif',
+            ]);
+        }
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.rooms'))
+            ->assertOk();
+
+        $response->assertSee('Menampilkan 1–10 dari 15 ruangan', false);
+        $response->assertSee('Lab 1');
+        $response->assertSee('Lab 10');
+        $response->assertDontSee('Lab 11');
+
+        $responsePage2 = $this->actingAs($admin)
+            ->get(route('admin.rooms', ['page' => 2]))
+            ->assertOk();
+
+        $responsePage2->assertSee('Menampilkan 11–15 dari 15 ruangan', false);
+        $responsePage2->assertSee('Lab 11');
+        $responsePage2->assertSee('Lab 15');
+        $responsePage2->assertDontSee('Lab 1</p>', false);
+    }
+
+    public function test_pic_rooms_page_is_paginated_with_10_rooms_per_page(): void
+    {
+        $picRole = $this->createRole('PIC Ruang');
+        $pic = $this->createUser('pic-user', $picRole);
+
+        for ($i = 1; $i <= 12; $i++) {
+            Room::create([
+                'room_name' => "Lab {$i}",
+                'capacity' => 36,
+                'pic_id' => $pic->id,
+                'is_active' => 'Aktif',
+            ]);
+        }
+
+        $response = $this->actingAs($pic)
+            ->get(route('pic.rooms'))
+            ->assertOk();
+
+        $response->assertSee('Menampilkan 1–10 dari 12 ruangan', false);
+        $response->assertSee('Lab 1');
+        $response->assertSee('Lab 10');
+        $response->assertDontSee('Lab 11');
+
+        $responsePage2 = $this->actingAs($pic)
+            ->get(route('pic.rooms', ['page' => 2]))
+            ->assertOk();
+
+        $responsePage2->assertSee('Menampilkan 11–12 dari 12 ruangan', false);
+        $responsePage2->assertSee('Lab 11');
+        $responsePage2->assertSee('Lab 12');
+    }
+
     private function createRole(string $name): Role
     {
         $role = new Role();

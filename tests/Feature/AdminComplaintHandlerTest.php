@@ -160,8 +160,7 @@ class AdminComplaintHandlerTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.complaints'))
             ->assertOk()
-            ->assertDontSee('Buat Pengaduan Kerusakan')
-            ->assertDontSee('Buat Pengaduan</a>');
+            ->assertSee('Buat Pengaduan Kerusakan');
 
         $this->actingAs($admin)
             ->get(route('admin.complaints.create'))
@@ -246,7 +245,7 @@ class AdminComplaintHandlerTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.complaints.create', ['room_id' => $room->id]))
             ->assertOk()
-            ->assertSee('value="'.$room->id.'" selected', false);
+            ->assertSee('name="room_id" value="'.$room->id.'"', false);
     }
 
     public function test_admin_can_open_whatsapp_with_a_reminder_for_the_assigned_pic(): void
@@ -439,6 +438,23 @@ class AdminComplaintHandlerTest extends TestCase
             'id' => $complaint->id,
             'status_repair' => 'Sudah Diperbaiki',
             'is_escalated' => false,
+        ]);
+    }
+
+    public function test_pic_can_update_complaint_status_to_sedang_diperbaiki(): void
+    {
+        $pic = $this->createUser('pic-update-sedang', 'PIC Ruang');
+        $complaint = $this->createComplaint($pic);
+
+        $this->actingAs($pic)
+            ->patch(route('pic.complaints.update-status', $complaint), [
+                'status_repair' => 'Sedang Diperbaiki',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('complaints', [
+            'id' => $complaint->id,
+            'status_repair' => 'Sedang Diperbaiki',
         ]);
     }
 

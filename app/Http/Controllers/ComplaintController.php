@@ -48,6 +48,11 @@ class ComplaintController extends Controller
                     ->orWhere('handler_id', $picId);
             })
                 ->where('status_repair', 'Belum Diperbaiki')->count(),
+            'in_repair' => Complaint::where(function ($query) use ($picId) {
+                $query->whereHas('room', fn ($query) => $query->where('pic_id', $picId))
+                    ->orWhere('handler_id', $picId);
+            })
+                ->where('status_repair', 'Sedang Diperbaiki')->count(),
             'waiting_parts' => Complaint::where(function ($query) use ($picId) {
                 $query->whereHas('room', fn ($query) => $query->where('pic_id', $picId))
                     ->orWhere('handler_id', $picId);
@@ -76,7 +81,7 @@ class ComplaintController extends Controller
         $validated = $request->validate([
             'status_repair' => [
                 'required',
-                'in:Belum Diperbaiki,Menunggu Spare Part,Sudah Diperbaiki',
+                'in:Belum Diperbaiki,Sedang Diperbaiki,Menunggu Spare Part,Sudah Diperbaiki',
             ],
         ]);
 
@@ -93,7 +98,7 @@ class ComplaintController extends Controller
     public function create(Request $request): View
     {
         $this->ensureCanCreateComplaint();
-        $rooms = Room::where('is_active', 'Aktif')->orderBy('room_name')->get();
+        $rooms = Room::sortRooms(Room::where('is_active', 'Aktif')->get());
         $selectedRoomId = Room::where('is_active', 'Aktif')
             ->whereKey($request->query('room_id'))
             ->value('id');

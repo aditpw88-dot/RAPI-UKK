@@ -73,6 +73,9 @@ class PicComplaintReportController extends Controller
 
         $period = ReportPeriod::resolve($request, true);
         $roomIds = $pic->rooms()->pluck('rooms.id');
+        if ($roomIds->isEmpty()) {
+            $roomIds = Room::pluck('id');
+        }
         $complaints = Complaint::with(['room', 'reporter.role'])
             ->where(function ($query) use ($roomIds, $pic) {
                 $query->whereIn('room_id', $roomIds)
@@ -94,10 +97,15 @@ class PicComplaintReportController extends Controller
     private function periodComplaints(Carbon $start, Carbon $end): Collection
     {
         $picId = auth()->id();
+        $user = auth()->user();
+        $roomIds = $user ? $user->rooms()->pluck('rooms.id') : collect();
+        if ($roomIds->isEmpty()) {
+            $roomIds = Room::pluck('id');
+        }
 
         return Complaint::with(['room', 'reporter.role'])
-            ->where(function ($query) use ($picId) {
-                $query->whereHas('room', fn ($roomQuery) => $roomQuery->where('pic_id', $picId))
+            ->where(function ($query) use ($picId, $roomIds) {
+                $query->whereIn('room_id', $roomIds)
                     ->orWhere('handler_id', $picId);
             })
             ->whereBetween('reported_at', [$start, $end])

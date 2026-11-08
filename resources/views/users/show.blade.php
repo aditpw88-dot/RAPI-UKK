@@ -36,6 +36,20 @@
                         </p>
                     </div>
 
+                    @if ($user->gender || str_contains(strtolower($user->role?->role_name ?? ''), 'guru'))
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Jenis Kelamin</label>
+                        <p class="fw-bold">{{ $user->gender ?: '-' }}</p>
+                    </div>
+                    @endif
+
+                    @if ($user->mapel || str_contains(strtolower($user->role?->role_name ?? ''), 'guru'))
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Mata Pelajaran</label>
+                        <p class="fw-bold">{{ $user->mapel ?: '-' }}</p>
+                    </div>
+                    @endif
+
                     <div class="mb-3">
                         <label class="form-label text-muted">Terdaftar Sejak</label>
                         <p class="fw-bold">{{ $user->created_at->format('d-m-Y H:i') }}</p>

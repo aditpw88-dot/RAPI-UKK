@@ -29,8 +29,9 @@
     <table class="summary">
         <tr>
             <td>Total Peminjaman<strong>{{ $events->count() }}</strong></td>
-            <td>Sedang Terlaksana<strong>{{ $events->where('status', 'approved')->whereNull('completed_at')->count() }}</strong></td>
-            <td>Sudah Terlaksana<strong>{{ $events->where('status', 'approved')->whereNotNull('completed_at')->count() }}</strong></td>
+            <td>Belum Terlaksana<strong>{{ $events->where('lifecycle_status', 'upcoming')->count() }}</strong></td>
+            <td>Sedang Terlaksana<strong>{{ $events->where('lifecycle_status', 'in_progress')->count() }}</strong></td>
+            <td>Sudah Terlaksana<strong>{{ $events->where('lifecycle_status', 'completed')->count() }}</strong></td>
         </tr>
     </table>
 

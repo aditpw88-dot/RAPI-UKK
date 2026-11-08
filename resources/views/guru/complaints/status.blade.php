@@ -68,11 +68,13 @@
                                     @php
                                         $statusStyle = match ($complaint->status_repair) {
                                             'Sudah Diperbaiki' => 'bg-green-100 text-green-800',
+                                            'Sedang Diperbaiki' => 'bg-blue-100 text-blue-800',
                                             'Menunggu Spare Part' => 'bg-amber-100 text-amber-800',
                                             default => 'bg-red-100 text-red-800',
                                         };
                                         $statusExplanation = match ($complaint->status_repair) {
                                             'Sudah Diperbaiki' => 'Perbaikan telah selesai.',
+                                            'Sedang Diperbaiki' => 'Kerusakan sedang dalam proses perbaikan oleh PIC.',
                                             'Menunggu Spare Part' => 'Perbaikan menunggu ketersediaan suku cadang.',
                                             default => 'Laporan diterima dan belum ditandai selesai.',
                                         };

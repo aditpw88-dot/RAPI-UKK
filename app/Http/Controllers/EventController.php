@@ -15,11 +15,10 @@ class EventController extends Controller
     {
         $this->ensureGuru();
 
-        $rooms = Room::where('is_active', 'Aktif')
-            ->orderBy('room_name')
-            ->get();
+        $rooms = Room::sortRooms(Room::where('is_active', 'Aktif')->get());
+        $bookedEvents = Event::getActiveBookedEvents();
 
-        return view('events.create', compact('rooms'));
+        return view('events.create', compact('rooms', 'bookedEvents'));
     }
 
     public function store(Request $request): RedirectResponse

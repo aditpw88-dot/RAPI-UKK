@@ -116,8 +116,8 @@ class EventSessionTest extends TestCase
             'event_name' => 'Rapat Sekolah',
             'start_time' => '12:30',
             'end_time' => '14:45',
-            'status' => 'pending',
-            'approved_by' => null,
+            'status' => 'approved',
+            'approved_by' => $admin->id,
         ]);
     }
 

@@ -73,6 +73,13 @@
                             </span>
                             <span aria-hidden="true" class="text-lg text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-700">→</span>
                         </a>
+                        <a href="{{ route('users.index', ['create' => 1]) }}" class="group flex items-center justify-between rounded-lg border border-slate-200 p-4 transition hover:border-slate-400 hover:bg-slate-50">
+                            <span>
+                                <span class="block font-semibold text-slate-900">Tambah User</span>
+                                <span class="mt-1 block text-xs text-slate-500">Daftarkan akun pengguna baru</span>
+                            </span>
+                            <span aria-hidden="true" class="text-lg text-slate-400 transition group-hover:translate-x-1 group-hover:text-slate-700">→</span>
+                        </a>
                     </div>
                 </aside>
             </div>

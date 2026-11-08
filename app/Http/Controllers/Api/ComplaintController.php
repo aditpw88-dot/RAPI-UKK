@@ -84,7 +84,7 @@ class ComplaintController extends Controller
         $validated = $request->validate([
             'status_repair' => [
                 'required',
-                'in:Belum Diperbaiki,Menunggu Spare Part,Sudah Diperbaiki',
+                'in:Belum Diperbaiki,Sedang Diperbaiki,Menunggu Spare Part,Sudah Diperbaiki',
             ],
         ]);
 

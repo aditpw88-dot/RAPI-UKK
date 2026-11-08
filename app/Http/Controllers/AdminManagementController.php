@@ -23,10 +23,11 @@ class AdminManagementController extends Controller
         ]);
         $search = trim($filters['search'] ?? '');
 
-        $rooms = Room::with('pic')
+        $rooms = Room::with(['pics', 'pic'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('room_name', 'like', "%{$search}%")
+                        ->orWhereHas('pics', fn ($query) => $query->where('fullname', 'like', "%{$search}%"))
                         ->orWhereHas('pic', fn ($query) => $query->where('fullname', 'like', "%{$search}%"));
                 });
             })
@@ -34,8 +35,8 @@ class AdminManagementController extends Controller
                 'is_active',
                 $filters['active'] === 'active' ? 'Aktif' : 'Tidak aktif'
             ))
-            ->latest()
             ->get();
+        $rooms = Room::paginateRooms($rooms, 10, $request);
         $pics = User::whereHas('role', fn ($query) => $query->where('role_name', 'like', '%PIC%'))
             ->orderBy('fullname')->get();
 
@@ -44,26 +45,56 @@ class AdminManagementController extends Controller
 
     public function storeRoom(Request $request)
     {
+        if ($request->has('pic_ids') && ! $request->filled('pic_id')) {
+            $picIds = array_filter((array) $request->input('pic_ids'));
+            $request->merge(['pic_id' => reset($picIds) ?: null]);
+        }
+
         $validated = $request->validate([
             'room_name' => ['required', 'string', 'max:255'],
             'capacity' => ['required', 'integer', 'min:1'],
-            'pic_id' => ['required', 'exists:users,id'],
+            'pic_id' => ['required', 'integer', 'exists:users,id'],
+        ], [
+            'pic_id.required' => 'Pilih penanggung jawab (PIC) untuk ruangan ini.',
+            'pic_id.exists' => 'PIC yang dipilih tidak ditemukan.',
         ]);
 
-        Room::create($validated + ['is_active' => 'Aktif']);
+        $room = Room::create([
+            'room_name' => $validated['room_name'],
+            'capacity' => $validated['capacity'],
+            'pic_id' => $validated['pic_id'],
+            'is_active' => 'Aktif',
+        ]);
+
+        $room->pics()->sync([$validated['pic_id']]);
 
         return back()->with('success', 'Ruang berhasil ditambahkan.');
     }
 
     public function updateRoom(Request $request, Room $room)
     {
+        if ($request->has('pic_ids') && ! $request->filled('pic_id')) {
+            $picIds = array_filter((array) $request->input('pic_ids'));
+            $request->merge(['pic_id' => reset($picIds) ?: null]);
+        }
+
         $validated = $request->validate([
             'room_name' => ['required', 'string', 'max:255'],
             'capacity' => ['required', 'integer', 'min:1'],
-            'pic_id' => ['required', 'exists:users,id'],
+            'pic_id' => ['required', 'integer', 'exists:users,id'],
+        ], [
+            'pic_id.required' => 'Pilih penanggung jawab (PIC) untuk ruangan ini.',
+            'pic_id.exists' => 'PIC yang dipilih tidak ditemukan.',
         ]);
 
-        $room->update($validated + ['is_active' => $request->boolean('is_active') ? 'Aktif' : 'Tidak aktif']);
+        $room->update([
+            'room_name' => $validated['room_name'],
+            'capacity' => $validated['capacity'],
+            'pic_id' => $validated['pic_id'],
+            'is_active' => $request->boolean('is_active') ? 'Aktif' : 'Tidak aktif',
+        ]);
+
+        $room->pics()->sync([$validated['pic_id']]);
 
         return back()->with('success', 'Ruang berhasil diperbarui.');
     }
@@ -96,27 +127,47 @@ class AdminManagementController extends Controller
             })
             ->when(isset($filters['status']), function ($query) use ($filters) {
                 match ($filters['status']) {
-                    'in_progress', 'approved' => $query->where('status', 'approved')->whereNull('completed_at'),
-                    'completed' => $query->where('status', 'approved')->whereNotNull('completed_at'),
+                    'upcoming' => $query->approvedUpcoming(),
+                    'in_progress' => $query->approvedInProgress(),
+                    'completed' => $query->approvedCompleted(),
+                    'approved' => $query->where('status', 'approved'),
                     default => $query->where('status', $filters['status']),
                 };
             })
             ->when(isset($filters['date_from']), fn ($query) => $query->whereRaw('COALESCE(end_date, date) >= ?', [$filters['date_from']]))
             ->when(isset($filters['date_to']), fn ($query) => $query->whereDate('date', '<=', $filters['date_to']))
-            ->latest('date')
-            ->latest('start_time')
             ->get();
-        $rooms = Room::where('is_active', 'Aktif')->orderBy('room_name')->get();
 
-        return view('admin.events.index', compact('events', 'rooms'));
+        $sortedEvents = Event::sortByLifecycle($events);
+
+        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?: 1;
+        $perPage = 5;
+        $events = new \Illuminate\Pagination\LengthAwarePaginator(
+            $sortedEvents->forPage($page, $perPage)->values(),
+            $sortedEvents->count(),
+            $perPage,
+            $page,
+            [
+                'path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
+                'pageName' => 'page',
+            ]
+        );
+        $events->appends($request->query());
+
+        $rooms = Room::sortRooms(Room::where('is_active', 'Aktif')->get());
+        $bookedEvents = Event::getActiveBookedEvents();
+        $selectedRoom = null;
+
+        return view('admin.events.index', compact('events', 'rooms', 'bookedEvents', 'selectedRoom'));
     }
 
     public function createEvent(Request $request)
     {
-        $rooms = Room::where('is_active', 'Aktif')->orderBy('room_name')->get();
+        $rooms = Room::sortRooms(Room::where('is_active', 'Aktif')->get());
         $selectedRoom = $rooms->firstWhere('id', $request->query('room_id'));
+        $bookedEvents = Event::getActiveBookedEvents();
 
-        return view('admin.events.create', compact('rooms', 'selectedRoom'));
+        return view('admin.events.create', compact('rooms', 'selectedRoom', 'bookedEvents'));
     }
 
     public function storeEvent(Request $request)
@@ -419,8 +470,9 @@ class AdminManagementController extends Controller
             ->where('type', \App\Notifications\ComplaintEscalated::class)
             ->latest()
             ->get();
+        $rooms = Room::sortRooms(Room::where('is_active', 'Aktif')->get());
 
-        return view('admin.complaints.index', compact('complaints', 'handlers', 'escalationNotifications'));
+        return view('admin.complaints.index', compact('complaints', 'handlers', 'escalationNotifications', 'rooms'));
     }
 
     public function remindComplaintHandler(Request $request, Complaint $complaint)

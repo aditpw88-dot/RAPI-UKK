@@ -24,6 +24,10 @@
                 <span x-show="sidebarOpen" x-transition>Kalender</span>
             </a>
             @if (auth()->user()->role && str_contains(strtolower(auth()->user()->role->role_name), 'pic'))
+                <a href="{{ route('pic.rooms') }}" class="nav-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm {{ request()->routeIs('pic.rooms*') ? 'nav-active' : '' }}" title="Manajemen Ruang">
+                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M5 21V5l7-3 7 3v16M9 9h2m-2 4h2m2-4h2m-2 4h2" /></svg>
+                    <span x-show="sidebarOpen" x-transition>Manajemen Ruang</span>
+                </a>
                 <a href="{{ route('pic.approvals') }}" class="nav-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm {{ request()->routeIs('pic.approvals') ? 'nav-active' : '' }}" title="Persetujuan Peminjaman">
                     <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5-4v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h12a2 2 0 012 2z" /></svg>
                     <span x-show="sidebarOpen" x-transition>Persetujuan Peminjaman</span>

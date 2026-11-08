@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('reporter_id')->constrained('users')->onDelete('cascade');
             $table->text('description');
             $table->string('photo_path');
-            $table->enum('status_repair', ['Belum Diperbaiki', 'Menunggu Spare Part', 'Sudah Diperbaiki'])->default('Belum Diperbaiki');
+            $table->enum('status_repair', ['Belum Diperbaiki', 'Sedang Diperbaiki', 'Menunggu Spare Part', 'Sudah Diperbaiki'])->default('Belum Diperbaiki');
             $table->foreignId('handler_id')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamp('reported_at')->useCurrent();
             $table->timestamps();
