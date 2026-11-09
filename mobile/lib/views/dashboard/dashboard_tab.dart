@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 import '../../core/date_utils.dart';
-import '../../models/event_model.dart';
 import '../../models/user_model.dart';
 import '../../theme/app_theme.dart';
 
@@ -44,10 +43,6 @@ class _DashboardTabState extends State<DashboardTab> {
     final response =
         await widget.api.get('/dashboard/summary') as Map<String, dynamic>;
     final data = response['data'] as Map<String, dynamic>;
-    final rawEvents = data['upcoming_events'] as List<dynamic>? ?? [];
-    final upcomingEvents = rawEvents
-        .map((e) => EventModel.fromJson(Map<String, dynamic>.from(e as Map)))
-        .toList();
 
     return _DashboardData(
       totalApprovedEvents: data['total_approved_events'] as int? ?? 0,
@@ -55,7 +50,6 @@ class _DashboardTabState extends State<DashboardTab> {
       myEventsCount: data['my_events_count'] as int? ?? 0,
       pendingEventsCount: data['pending_events_count'] as int? ?? 0,
       complaintsCount: data['complaints_count'] as int? ?? 0,
-      upcomingEvents: upcomingEvents,
     );
   }
 
@@ -102,66 +96,28 @@ class _DashboardTabState extends State<DashboardTab> {
           final data = snapshot.data!;
 
           return ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: ClampingScrollPhysics(),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             children: [
-              // Welcome Hero Card
-              _buildHeroCard(),
+              // 1. Welcome Hero Card
+              RepaintBoundary(child: _buildHeroCard()),
 
               const SizedBox(height: 16),
 
-              // Metric Stats Grid
-              _buildStatsGrid(data),
+              // 2. Metric Stats Grid (4 kartu metrik)
+              RepaintBoundary(child: _buildStatsGrid(data)),
 
               const SizedBox(height: 18),
 
-              // Quick Actions
-              _buildQuickActions(),
+              // 3. Quick Actions (4 tombol penuh horizontal)
+              RepaintBoundary(child: _buildQuickActions()),
 
               const SizedBox(height: 20),
 
-              // Upcoming Events Preview Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Agenda Terdekat',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () =>
-                        widget.onNavigateToTab(2), // go to events tab
-                    child: const Text('Lihat Semua'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-
-              if (data.upcomingEvents.isEmpty)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.event_busy,
-                          size: 40,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Belum ada agenda sekolah terdekat yang disetujui.',
-                          style: TextStyle(color: Color(0xFF64748B)),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                ...data.upcomingEvents.map((event) => _buildEventItem(event)),
+              // 4. Panduan & SOP Operasional Ruangan (Ringan, Rapi & Bermanfaat)
+              RepaintBoundary(child: _buildSopSection()),
             ],
           );
         },
@@ -319,7 +275,106 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
+  /// Tombol Aksi Cepat yang Memenuhi Ruang Horizontal Secara Penuh & Sempurna
   Widget _buildQuickActions() {
+    Widget buildBtn({
+      required IconData icon,
+      required String label,
+      required Color color,
+      required Color bgColor,
+      required Color borderColor,
+      required VoidCallback onTap,
+    }) {
+      return Expanded(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 17, color: color),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final btn1 = widget.user.isPic
+        ? buildBtn(
+            icon: Icons.fact_check_outlined,
+            label: 'Tinjau Pengajuan',
+            color: const Color(0xFFB45309),
+            bgColor: const Color(0xFFFFFBEB),
+            borderColor: const Color(0xFFFDE68A),
+            onTap: () => widget.onNavigateToTab(2),
+          )
+        : buildBtn(
+            icon: Icons.add_circle_outline,
+            label: 'Ajukan Agenda',
+            color: const Color(0xFF09090B),
+            bgColor: const Color(0xFFF4F4F5),
+            borderColor: const Color(0xFFE4E4E7),
+            onTap: widget.onOpenCreateEvent,
+          );
+
+    final btn2 = widget.user.isPic
+        ? buildBtn(
+            icon: Icons.build_outlined,
+            label: 'Update Status Sarpras',
+            color: const Color(0xFF334155),
+            bgColor: const Color(0xFFF1F5F9),
+            borderColor: const Color(0xFFE2E8F0),
+            onTap: () => widget.onNavigateToTab(3),
+          )
+        : buildBtn(
+            icon: Icons.add_a_photo_outlined,
+            label: 'Lapor Kerusakan',
+            color: const Color(0xFFB45309),
+            bgColor: const Color(0xFFFFFBEB),
+            borderColor: const Color(0xFFFDE68A),
+            onTap: widget.onOpenCreateComplaint,
+          );
+
+    final btn3 = buildBtn(
+      icon: Icons.search_rounded,
+      label: 'Cari Ruangan',
+      color: const Color(0xFF2563EB),
+      bgColor: const Color(0xFFEFF6FF),
+      borderColor: const Color(0xFFDBEAFE),
+      onTap: () => widget.onNavigateToTab(1),
+    );
+
+    final btn4 = buildBtn(
+      icon: Icons.calendar_month_outlined,
+      label: 'Lihat Kalender',
+      color: const Color(0xFF0F172A),
+      bgColor: const Color(0xFFF8FAFC),
+      borderColor: const Color(0xFFE2E8F0),
+      onTap: () => widget.onNavigateToTab(4),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -332,142 +387,214 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
         ),
         const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            if (widget.user.isGuru) ...[
-              ActionChip(
-                avatar: const Icon(Icons.add, color: AppTheme.primaryColor),
-                label: const Text('Ajukan Agenda'),
-                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-                onPressed: widget.onOpenCreateEvent,
-              ),
-              ActionChip(
-                avatar: const Icon(
-                  Icons.add_a_photo_outlined,
-                  color: Color(0xFFD97706),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Pada layar lebar (desktop/web/tablet >= 640px): 1 baris 4 tombol penuh
+            if (constraints.maxWidth >= 640) {
+              return Row(
+                children: [
+                  btn1,
+                  const SizedBox(width: 8),
+                  btn2,
+                  const SizedBox(width: 8),
+                  btn3,
+                  const SizedBox(width: 8),
+                  btn4,
+                ],
+              );
+            }
+
+            // Pada layar ponsel (< 640px): 2 baris x 2 tombol penuh
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    btn1,
+                    const SizedBox(width: 8),
+                    btn2,
+                  ],
                 ),
-                label: const Text('Lapor Kerusakan'),
-                backgroundColor: const Color(0xFFD97706).withValues(alpha: 0.1),
-                onPressed: widget.onOpenCreateComplaint,
-              ),
-            ],
-            if (widget.user.isPic) ...[
-              ActionChip(
-                avatar: const Icon(
-                  Icons.fact_check_outlined,
-                  color: Color(0xFFD97706),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    btn3,
+                    const SizedBox(width: 8),
+                    btn4,
+                  ],
                 ),
-                label: const Text('Tinjau Pengajuan'),
-                backgroundColor: const Color(0xFFD97706).withValues(alpha: 0.1),
-                onPressed: () => widget.onNavigateToTab(2),
-              ),
-              ActionChip(
-                avatar: const Icon(
-                  Icons.build_outlined,
-                  color: AppTheme.primaryColor,
-                ),
-                label: const Text('Update Status Sarpras'),
-                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-                onPressed: () => widget.onNavigateToTab(3),
-              ),
-            ],
-            ActionChip(
-              avatar: const Icon(Icons.search, color: Color(0xFF3B82F6)),
-              label: const Text('Cari Ruangan'),
-              backgroundColor: const Color(0xFF3B82F6).withValues(alpha: 0.1),
-              onPressed: () => widget.onNavigateToTab(1),
-            ),
-            ActionChip(
-              avatar: const Icon(
-                Icons.calendar_month,
-                color: AppTheme.primaryColor,
-              ),
-              label: const Text('Lihat Kalender'),
-              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-              onPressed: () => widget.onNavigateToTab(4),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildEventItem(EventModel event) {
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
+  /// Bagian SOP & Pengawasan Ruangan (Sangat Ringan, Cepat & Praktis untuk PIC)
+  Widget _buildSopSection() {
+    final isPic = widget.user.isPic;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE4E4E7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF09090B).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.assignment_turned_in_outlined,
+                        size: 18,
+                        color: Color(0xFF09090B),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        isPic
+                            ? 'SOP & Pengawasan PIC Ruang'
+                            : 'Panduan & Ketentuan Peminjaman',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF09090B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                ),
+                child: const Text(
+                  'Standar Resmi',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF047857),
+                  ),
+                ),
+              ),
+            ],
           ),
-          child: const Icon(Icons.event_note, color: AppTheme.primaryColor),
-        ),
-        title: Text(
-          event.eventName,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(
-                  Icons.meeting_room,
-                  size: 14,
-                  color: Color(0xFF64748B),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  event.roomName ?? 'Ruangan',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                const Icon(
-                  Icons.access_time,
-                  size: 14,
-                  color: Color(0xFF64748B),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${IndoDateUtils.formatDateRange(event.date, event.endDate)}  •  ${IndoDateUtils.formatTimeRange(event.startTime, event.endTime)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          const SizedBox(height: 14),
+
+          _buildSopItem(
+            icon: Icons.check_circle_outline,
+            iconColor: const Color(0xFF10B981),
+            bgColor: const Color(0xFFECFDF5),
+            title: isPic
+                ? 'Kesiapan Sarana & Fasilitas'
+                : 'Pengajuan Sesuai Prosedur',
+            description: isPic
+                ? 'Pastikan AC, LCD proyektor, kelistrikan, dan kebersihan ruang siap sebelum kegiatan dimulai.'
+                : 'Ajukan permohonan ruang minimal 1-2 hari sebelum pelaksanaan kegiatan sekolah.',
+          ),
+          const SizedBox(height: 10),
+
+          _buildSopItem(
+            icon: isPic ? Icons.fact_check_outlined : Icons.event_available_outlined,
+            iconColor: const Color(0xFFD97706),
+            bgColor: const Color(0xFFFFFBEB),
+            title: isPic
+                ? 'Verifikasi & Validasi Pengajuan'
+                : 'Menunggu Persetujuan PIC',
+            description: isPic
+                ? 'Tinjau kesesuaian kapasitas ruang dan waktu kegiatan melalui menu Tinjau Pengajuan.'
+                : 'Pantau status permohonan Anda. Penggunaan hanya sah jika status telah "Disetujui".',
+          ),
+          const SizedBox(height: 10),
+
+          _buildSopItem(
+            icon: Icons.lock_outline,
+            iconColor: const Color(0xFF2563EB),
+            bgColor: const Color(0xFFEFF6FF),
+            title: 'Pengamanan & Ketertiban Selesai Pakai',
+            description:
+                'Pastikan semua perangkat elektronik telah dimatikan, sampah dibersihkan, dan pintu ruang terkunci rapat.',
+          ),
+          const SizedBox(height: 10),
+
+          _buildSopItem(
+            icon: Icons.build_outlined,
+            iconColor: const Color(0xFF64748B),
+            bgColor: const Color(0xFFF1F5F9),
+            title: 'Pelaporan Kendala & Kerusakan',
+            description:
+                'Jika ditemukan kerusakan fasilitas atau sarana tidak berfungsi, laporkan segera melalui menu Update Status Sarpras.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSopItem({
+    required IconData icon,
+    required Color iconColor,
+    required Color bgColor,
+    required String title,
+    required String description,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withValues(alpha: 0.12),
+            color: bgColor,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Text(
-            'Disetujui',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF10B981),
-            ),
+          child: Icon(icon, size: 16, color: iconColor),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF18181B),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: Color(0xFF71717A),
+                  height: 1.35,
+                ),
+              ),
+            ],
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -565,7 +692,6 @@ class _DashboardData {
     required this.myEventsCount,
     required this.pendingEventsCount,
     required this.complaintsCount,
-    required this.upcomingEvents,
   });
 
   final int totalApprovedEvents;
@@ -573,5 +699,4 @@ class _DashboardData {
   final int myEventsCount;
   final int pendingEventsCount;
   final int complaintsCount;
-  final List<EventModel> upcomingEvents;
 }

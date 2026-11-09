@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
@@ -12,9 +13,49 @@ class SessionManager {
 
   static const _secureStorage = FlutterSecureStorage();
 
+  /// Menulis ke storage dengan aman. Pada web atau jika Web Crypto API tidak tersedia,
+  /// gunakan SharedPreferences (localStorage) untuk menghindari error 'generateKey'.
+  static Future<void> _writeStorage(String key, String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (kIsWeb) {
+      await prefs.setString(key, value);
+      return;
+    }
+    try {
+      await _secureStorage.write(key: key, value: value);
+    } catch (_) {
+      await prefs.setString(key, value);
+    }
+  }
+
+  /// Membaca dari storage. Menggunakan SharedPreferences pada web.
+  static Future<String?> _readStorage(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (kIsWeb) {
+      return prefs.getString(key);
+    }
+    try {
+      final val = await _secureStorage.read(key: key);
+      return val ?? prefs.getString(key);
+    } catch (_) {
+      return prefs.getString(key);
+    }
+  }
+
+  /// Menghapus dari storage.
+  static Future<void> _deleteStorage(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(key);
+    if (!kIsWeb) {
+      try {
+        await _secureStorage.delete(key: key);
+      } catch (_) {}
+    }
+  }
+
   static Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_apiUrlKey) ?? AppConstants.defaultLaragonVhostUrl;
+    return prefs.getString(_apiUrlKey) ?? AppConstants.defaultAppUrl;
   }
 
   static Future<void> saveBaseUrl(String url) async {
@@ -31,8 +72,8 @@ class SessionManager {
     required String baseUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    await _secureStorage.write(key: _tokenKey, value: token);
-    await _secureStorage.write(key: _userKey, value: jsonEncode(user.toJson()));
+    await _writeStorage(_tokenKey, token);
+    await _writeStorage(_userKey, jsonEncode(user.toJson()));
     await prefs.setString(
       _apiUrlKey,
       baseUrl.trim().replaceAll(RegExp(r'/+$'), ''),
@@ -43,7 +84,7 @@ class SessionManager {
   static Future<Map<String, dynamic>> restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
     final baseUrl =
-        prefs.getString(_apiUrlKey) ?? AppConstants.defaultLaragonVhostUrl;
+        prefs.getString(_apiUrlKey) ?? AppConstants.defaultAppUrl;
     final isLegacyGuest = prefs.getBool(_legacyGuestKey) ?? false;
 
     if (isLegacyGuest) {
@@ -51,23 +92,27 @@ class SessionManager {
       return {'token': null, 'user': null, 'baseUrl': baseUrl};
     }
 
-    final token = await _secureStorage.read(key: _tokenKey);
-    final userRaw = await _secureStorage.read(key: _userKey);
+    try {
+      final token = await _readStorage(_tokenKey);
+      final userRaw = await _readStorage(_userKey);
 
-    if (token != null && userRaw != null) {
-      try {
-        final decoded = jsonDecode(userRaw);
-        if (decoded is Map<String, dynamic>) {
-          final user = UserModel.fromJson(decoded);
-          if (user.isMobileAllowed) {
-            return {'token': token, 'user': user, 'baseUrl': baseUrl};
+      if (token != null && userRaw != null) {
+        try {
+          final decoded = jsonDecode(userRaw);
+          if (decoded is Map<String, dynamic>) {
+            final user = UserModel.fromJson(decoded);
+            if (user.isMobileAllowed) {
+              return {'token': token, 'user': user, 'baseUrl': baseUrl};
+            }
           }
+        } catch (_) {
+          await clearSession();
         }
-      } catch (_) {
+
         await clearSession();
       }
-
-      await clearSession();
+    } catch (_) {
+      // Keystores/Storage error fallback
     }
 
     return {'token': null, 'user': null, 'baseUrl': baseUrl};
@@ -75,8 +120,8 @@ class SessionManager {
 
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
-    await _secureStorage.delete(key: _tokenKey);
-    await _secureStorage.delete(key: _userKey);
+    await _deleteStorage(_tokenKey);
+    await _deleteStorage(_userKey);
     await prefs.remove(_legacyGuestKey);
   }
 }

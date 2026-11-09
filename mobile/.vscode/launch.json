@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Mobile App (Chrome - Cepat & Ringan)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "-d",
+                "chrome",
+                "--web-browser-flag=--disable-extensions",
+                "--web-browser-flag=--disable-default-apps",
+                "--web-browser-flag=--no-first-run"
+            ]
+        },
+        {
+            "name": "Mobile App (Android / Device)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart"
+        }
+    ]
+}

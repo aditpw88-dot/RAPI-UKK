@@ -636,9 +636,6 @@
         box-shadow: 0 0 0 2px rgba(201, 106, 27, 0.2);
         background: #fffdfa;
     }
-        border-color: #c96a1b;
-        box-shadow: 0 0 0 2px rgba(201, 106, 27, 0.2);
-    }
 
     @media (max-width: 900px) {
         #calendar .fc-header-toolbar {
@@ -747,22 +744,9 @@
         width: 100%;
     }
 
-    #calendar .fc-daygrid-more-link {
-        display: inline-block;
-        margin: 2px 2px !important;
-        padding: 1px 6px !important;
-        color: #8a4b16 !important;
-        background: #fbf2e6;
-        border-radius: 4px;
-        font-size: 0.75rem !important;
-        font-weight: 700 !important;
-        text-decoration: none;
-        cursor: pointer;
-    }
-
-    #calendar .fc-daygrid-more-link:hover {
-        background: #f3dfc8;
-        color: #4a280e !important;
+    #calendar .fc-daygrid-more-link,
+    #calendar .fc-more-link {
+        display: none !important;
     }
 
     .agenda-dialog {
@@ -991,12 +975,152 @@
     }
 
     @media (max-width: 640px) {
+        .calendar-page {
+            padding: 0.75rem 0.5rem 1.5rem !important;
+        }
+
+        .calendar-page-heading {
+            padding: 14px 12px !important;
+            margin-bottom: 12px !important;
+            border-radius: 10px !important;
+        }
+
+        .calendar-page-heading h2 {
+            font-size: 1.15rem !important;
+        }
+
+        .calendar-page-heading p {
+            font-size: 0.8rem !important;
+        }
+
+        #calendar {
+            padding: 8px 6px !important;
+            border-radius: 10px !important;
+        }
+
+        #calendar .fc .fc-toolbar {
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+
+        #calendar .fc-header-toolbar .fc-toolbar-chunk {
+            display: flex !important;
+            justify-content: center !important;
+            flex-wrap: wrap !important;
+            gap: 4px !important;
+        }
+
+        #calendar .fc .fc-toolbar-title {
+            font-size: 1.1rem !important;
+            text-align: center !important;
+        }
+
+        #calendar .fc .fc-toolbar .fc-button {
+            padding: 4px 8px !important;
+            font-size: 0.8rem !important;
+            height: auto !important;
+        }
+
+        .calendar-header-filter {
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            gap: 4px !important;
+            width: 100% !important;
+        }
+
+        .calendar-view-toggle .calendar-view-btn {
+            padding: 4px 8px !important;
+            font-size: 0.75rem !important;
+        }
+
+        .calendar-select-group {
+            gap: 4px !important;
+        }
+
+        .calendar-filter-select,
+        .calendar-filter-year-input {
+            height: 30px !important;
+            font-size: 0.78rem !important;
+            padding: 2px 6px !important;
+        }
+
+        .calendar-filter-year-input {
+            width: 65px !important;
+        }
+
+        #calendar .fc .fc-col-header-cell-cushion {
+            padding: 6px 1px !important;
+            font-size: 0.72rem !important;
+        }
+
+        #calendar .fc-daygrid-day-frame {
+            min-height: 52px !important;
+        }
+
+        #calendar .fc-daygrid-day-number {
+            font-size: 0.75rem !important;
+            padding: 2px 4px !important;
+        }
+
+        /* Di layar HP (< 640px), tampilkan agenda sebagai titik indikator warna yang rapi & presisi */
+        #calendar .fc-daygrid-day-events {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            gap: 2.5px !important;
+            padding: 2px 1px !important;
+            min-height: 10px !important;
+        }
+
+        #calendar .fc-daygrid-event-harness {
+            margin: 0 !important;
+            display: inline-flex !important;
+        }
+
+        #calendar .fc-daygrid-event {
+            width: 7px !important;
+            height: 7px !important;
+            min-width: 7px !important;
+            border-radius: 50% !important;
+            padding: 0 !important;
+            margin: 1px !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        #calendar .fc-daygrid-event .fc-event-title,
+        #calendar .fc-daygrid-event .fc-event-time {
+            display: none !important;
+        }
+
         .calendar-actions {
             flex-direction: column;
         }
 
         .calendar-action {
             text-align: center;
+        }
+
+        .agenda-dialog {
+            width: 95vw !important;
+            max-width: 95vw !important;
+            margin: auto !important;
+            border-radius: 12px !important;
+        }
+
+        .agenda-dialog-panel {
+            padding: 14px !important;
+        }
+
+        .agenda-dialog-header h3 {
+            font-size: 1.05rem !important;
+        }
+
+        .agenda-detail-grid {
+            grid-template-columns: 90px 1fr !important;
+            gap: 6px !important;
+            font-size: 0.82rem !important;
         }
 
         .agenda-section {
@@ -1530,10 +1654,7 @@
             buttonText: {
                 today: 'Hari Ini'
             },
-            dayMaxEvents: 3,
-            moreLinkText: function(num) {
-                return '+' + num + ' lainnya';
-            },
+            dayMaxEvents: false,
             eventDisplay: 'block',
             displayEventTime: false, // Hanya menampilkan nama agenda saja di badge kalender
             eventOrder: (a, b) => (b.extendedProps.createdAt || '').localeCompare(a.extendedProps.createdAt || ''),

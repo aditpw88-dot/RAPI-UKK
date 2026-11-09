@@ -152,7 +152,7 @@
                         <div class="flex items-center gap-3">
                             <h3 class="font-bold text-slate-900 text-lg sm:text-xl">Pengajuan Agenda</h3>
                             <span class="rounded-full bg-slate-100 border border-slate-200 px-3 py-0.5 text-xs font-semibold text-slate-700">
-                                Total: {{ $events->count() }} Agenda
+                                Total: {{ $events instanceof \Illuminate\Pagination\LengthAwarePaginator ? $events->total() : $events->count() }} Agenda
                             </span>
                         </div>
                         <p class="text-xs sm:text-sm text-slate-500 mt-1">
@@ -249,6 +249,11 @@
                             </tbody>
                         </table>
                     </div>
+                    @if ($events instanceof \Illuminate\Pagination\LengthAwarePaginator && $events->hasPages())
+                        <div class="border-t border-gray-200 px-6 py-4 bg-gray-50/50">
+                            {{ $events->links() }}
+                        </div>
+                    @endif
                 @endif
             </section>
         </div>

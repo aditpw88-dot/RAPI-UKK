@@ -25,7 +25,7 @@ class _SchoolMobileAppState extends State<SchoolMobileApp> {
   bool _showLogin = false;
   String? _token;
   UserModel? _user;
-  String _baseUrl = AppConstants.defaultLaragonVhostUrl;
+  String _baseUrl = AppConstants.defaultAppUrl;
 
   @override
   void initState() {

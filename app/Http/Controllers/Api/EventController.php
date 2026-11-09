@@ -15,40 +15,68 @@ class EventController extends Controller
 {
     public function index(): JsonResponse
     {
+        $events = Event::query()
+            ->select([
+                'id',
+                'room_id',
+                'pic_id',
+                'event_name',
+                'event_type',
+                'date',
+                'end_date',
+                'start_time',
+                'end_time',
+                'status',
+                'rejection_reason',
+                'completed_at',
+            ])
+            ->with(['room:id,room_name', 'rooms:id,room_name', 'pic:id,fullname'])
+            ->where('status', 'approved')
+            ->get()
+            ->sort(function ($a, $b) {
+                $roomA = $a->room?->room_name ?? ($a->rooms->first()?->room_name ?? '');
+                $roomB = $b->room?->room_name ?? ($b->rooms->first()?->room_name ?? '');
+                $roomCmp = Room::compareRoomNames($roomA, $roomB);
+                if ($roomCmp !== 0) {
+                    return $roomCmp;
+                }
+                $dateCmp = strcmp($b->date, $a->date);
+                if ($dateCmp !== 0) {
+                    return $dateCmp;
+                }
+                return strcmp($a->start_time, $b->start_time);
+            })
+            ->values();
+
         return response()->json([
             'success' => true,
-            'data' => Event::query()
-                ->select([
-                    'id',
-                    'room_id',
-                    'pic_id',
-                    'event_name',
-                    'event_type',
-                    'date',
-                    'end_date',
-                    'start_time',
-                    'end_time',
-                    'status',
-                    'rejection_reason',
-                    'completed_at',
-                ])
-                ->with(['room:id,room_name', 'rooms:id,room_name', 'pic:id,fullname'])
-                ->where('status', 'approved')
-                ->orderBy('date')
-                ->orderBy('start_time')
-                ->get(),
+            'data' => $events,
         ]);
     }
 
     public function mine(Request $request): JsonResponse
     {
+        $events = Event::with(['room:id,room_name', 'rooms:id,room_name'])
+            ->where('pic_id', $request->user()->id)
+            ->get()
+            ->sort(function ($a, $b) {
+                $roomA = $a->room?->room_name ?? ($a->rooms->first()?->room_name ?? '');
+                $roomB = $b->room?->room_name ?? ($b->rooms->first()?->room_name ?? '');
+                $roomCmp = Room::compareRoomNames($roomA, $roomB);
+                if ($roomCmp !== 0) {
+                    return $roomCmp;
+                }
+                $dateCmp = strcmp($b->date, $a->date);
+                if ($dateCmp !== 0) {
+                    return $dateCmp;
+                }
+                return strcmp($a->start_time, $b->start_time);
+            })
+            ->values();
+
         return response()->json([
             'success' => true,
-            'data' => Event::with(['room:id,room_name', 'rooms:id,room_name'])
-                ->where('pic_id', $request->user()->id)
-                ->orderByDesc('date')
-                ->orderBy('start_time')
-                ->get(),
+            'data' => $events,
         ]);
     }
 
@@ -57,14 +85,28 @@ class EventController extends Controller
         $this->ensurePic($request);
         $roomIds = $request->user()->rooms()->pluck('rooms.id');
 
+        $events = Event::with(['room:id,room_name', 'rooms:id,room_name', 'pic:id,fullname'])
+            ->forRooms($roomIds->all())
+            ->where('status', 'pending')
+            ->get()
+            ->sort(function ($a, $b) {
+                $roomA = $a->room?->room_name ?? ($a->rooms->first()?->room_name ?? '');
+                $roomB = $b->room?->room_name ?? ($b->rooms->first()?->room_name ?? '');
+                $roomCmp = Room::compareRoomNames($roomA, $roomB);
+                if ($roomCmp !== 0) {
+                    return $roomCmp;
+                }
+                $dateCmp = strcmp($b->date, $a->date);
+                if ($dateCmp !== 0) {
+                    return $dateCmp;
+                }
+                return strcmp($a->start_time, $b->start_time);
+            })
+            ->values();
+
         return response()->json([
             'success' => true,
-            'data' => Event::with(['room:id,room_name', 'rooms:id,room_name', 'pic:id,fullname'])
-                ->forRooms($roomIds->all())
-                ->where('status', 'pending')
-                ->orderBy('date')
-                ->orderBy('start_time')
-                ->get(),
+            'data' => $events,
         ]);
     }
 
@@ -73,13 +115,27 @@ class EventController extends Controller
         $this->ensurePic($request);
         $roomIds = $request->user()->rooms()->pluck('rooms.id');
 
+        $events = Event::with(['room:id,room_name', 'rooms:id,room_name', 'pic:id,fullname'])
+            ->forRooms($roomIds->all())
+            ->get()
+            ->sort(function ($a, $b) {
+                $roomA = $a->room?->room_name ?? ($a->rooms->first()?->room_name ?? '');
+                $roomB = $b->room?->room_name ?? ($b->rooms->first()?->room_name ?? '');
+                $roomCmp = Room::compareRoomNames($roomA, $roomB);
+                if ($roomCmp !== 0) {
+                    return $roomCmp;
+                }
+                $dateCmp = strcmp($b->date, $a->date);
+                if ($dateCmp !== 0) {
+                    return $dateCmp;
+                }
+                return strcmp($a->start_time, $b->start_time);
+            })
+            ->values();
+
         return response()->json([
             'success' => true,
-            'data' => Event::with(['room:id,room_name', 'rooms:id,room_name', 'pic:id,fullname'])
-                ->forRooms($roomIds->all())
-                ->orderByDesc('date')
-                ->orderBy('start_time')
-                ->get(),
+            'data' => $events,
         ]);
     }
 

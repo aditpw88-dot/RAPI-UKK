@@ -3,8 +3,49 @@
 @tailwind utilities;
 
 @layer base {
+	html {
+		-webkit-text-size-adjust: 100%;
+		text-size-adjust: 100%;
+		scroll-behavior: smooth;
+	}
+
 	body {
-		font-size: 1.125rem;
+		font-size: 0.9375rem;
+		line-height: 1.5;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	@screen sm {
+		body {
+			font-size: 1rem;
+		}
+	}
+
+	@screen lg {
+		body {
+			font-size: 1.05rem;
+		}
+	}
+
+	/* Mencegah auto-zoom paksa di iOS Safari saat fokus pada input */
+	input:not([type="checkbox"]):not([type="radio"]),
+	select,
+	textarea {
+		font-size: 16px;
+	}
+
+	@screen sm {
+		input:not([type="checkbox"]):not([type="radio"]),
+		select,
+		textarea {
+			font-size: inherit;
+		}
+	}
+
+	/* Scroll sentuh lancar untuk tabel data responsif */
+	.overflow-x-auto {
+		-webkit-overflow-scrolling: touch;
 	}
 }
 

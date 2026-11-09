@@ -421,11 +421,97 @@ class _EventListView extends StatefulWidget {
 
 class _EventListViewState extends State<_EventListView> {
   late Future<List<EventModel>> _eventsFuture;
+  final ScrollController _scrollController = ScrollController();
+  static const int _pageSize = 6;
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
     _eventsFuture = _loadEvents();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _EventListView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.searchQuery != widget.searchQuery ||
+        oldWidget.filterDate != widget.filterDate ||
+        oldWidget.endpoint != widget.endpoint ||
+        oldWidget.statusFilter != widget.statusFilter) {
+      setState(() => _currentPage = 0);
+    }
+  }
+
+  /// Urutan Ruangan Standar Sekolah:
+  /// 1. Ruang Wijaya
+  /// 2. DAK
+  /// 3. Lab 1 - 21
+  /// 4. Ruang 1 - seterusnya (termasuk Ruang Kelas 1 - 32)
+  /// 5. Ruangan lainnya
+  static List<dynamic> _getRoomRank(String rawName) {
+    final name = rawName.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final lower = name.toLowerCase();
+
+    // 1. Ruang Wijaya
+    if (lower.contains('wijaya')) {
+      return [0, 0, lower];
+    }
+
+    // 2. DAK
+    if (lower.contains('dak')) {
+      return [0, 1, lower];
+    }
+
+    // 3. Lab 1 - 21
+    final labMatch =
+        RegExp(r'^lab\s*(\d+)', caseSensitive: false).firstMatch(name);
+    if (labMatch != null) {
+      return [1, int.tryParse(labMatch.group(1)!) ?? 0, lower];
+    }
+
+    // 4. Ruang 1 - seterusnya (termasuk Ruang Kelas 1 - 32 atau Ruang 1 - n)
+    final roomMatch = RegExp(
+      r'^(?:ruang\s+kelas|ruang|kelas)\s*(\d+)',
+      caseSensitive: false,
+    ).firstMatch(name);
+    if (roomMatch != null) {
+      return [2, int.tryParse(roomMatch.group(1)!) ?? 0, lower];
+    }
+
+    // 5. Ruangan lainnya
+    return [3, 0, lower];
+  }
+
+  static int _compareEvents(EventModel a, EventModel b) {
+    final rankA = _getRoomRank(a.roomName ?? '');
+    final rankB = _getRoomRank(b.roomName ?? '');
+
+    // 1. Urutkan berdasarkan prioritas ruangan sekolah
+    if (rankA[0] != rankB[0]) {
+      return (rankA[0] as int).compareTo(rankB[0] as int);
+    }
+    if (rankA[1] != rankB[1]) {
+      return (rankA[1] as int).compareTo(rankB[1] as int);
+    }
+    final roomCompare = (rankA[2] as String).compareTo(rankB[2] as String);
+    if (roomCompare != 0) {
+      return roomCompare;
+    }
+
+    // 2. Jika ruangan sama, urutkan tanggal terbaru/terdekat dahulu
+    final dateCompare = b.date.compareTo(a.date);
+    if (dateCompare != 0) {
+      return dateCompare;
+    }
+
+    // 3. Jika tanggal sama, urutkan jam mulai
+    return a.startTime.compareTo(b.startTime);
   }
 
   Future<List<EventModel>> _loadEvents() async {
@@ -474,7 +560,11 @@ class _EventListViewState extends State<_EventListView> {
           );
         }
 
-        final events = snapshot.data!;
+        // 1. Urutkan daftar agenda berdasarkan prioritas ruangan standar sekolah:
+        // Ruang Wijaya -> DAK -> Lab 1-21 -> Ruang 1-seterusnya -> Lainnya
+        final events = List<EventModel>.from(snapshot.data!)
+          ..sort(_compareEvents);
+
         final filtered = events.where((e) {
           if (widget.statusFilter != null &&
               e.status.toLowerCase() != widget.statusFilter) {
@@ -528,13 +618,32 @@ class _EventListViewState extends State<_EventListView> {
           );
         }
 
-        return RefreshIndicator(
-          onRefresh: () async => widget.onRefresh(),
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) {
-              final event = filtered[index];
+        final totalPages = (filtered.length / _pageSize).ceil();
+        final safePage = _currentPage >= totalPages
+            ? (totalPages > 0 ? totalPages - 1 : 0)
+            : _currentPage;
+        final pagedEvents = filtered
+            .skip(safePage * _pageSize)
+            .take(_pageSize)
+            .toList();
+
+        return Column(
+          children: [
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => widget.onRefresh(),
+                child: ListView.builder(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: ClampingScrollPhysics(),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  itemCount: pagedEvents.length,
+                  itemBuilder: (context, index) {
+                    final event = pagedEvents[index];
               return Card(
                 child: Padding(
                   padding: const EdgeInsets.all(14),
@@ -718,8 +827,139 @@ class _EventListViewState extends State<_EventListView> {
               );
             },
           ),
+        ),
+      ),
+      _buildPaginationBar(
+              currentPage: safePage,
+              totalPages: totalPages,
+              totalItems: filtered.length,
+              onPageChanged: (newPage) {
+                setState(() => _currentPage = newPage);
+                if (_scrollController.hasClients) {
+                  _scrollController.jumpTo(0);
+                }
+              },
+            ),
+          ],
         );
       },
+    );
+  }
+
+  /// Kontrol Pagination Agenda & Jadwal (Bersih, Responsif & Cepat)
+  Widget _buildPaginationBar({
+    required int currentPage,
+    required int totalPages,
+    required int totalItems,
+    required ValueChanged<int> onPageChanged,
+  }) {
+    if (totalItems <= _pageSize) return const SizedBox.shrink();
+
+    final startItem = currentPage * _pageSize + 1;
+    final endItem = (currentPage + 1) * _pageSize > totalItems
+        ? totalItems
+        : (currentPage + 1) * _pageSize;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              'Menampilkan $startItem-$endItem dari $totalItems agenda',
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                onTap: currentPage > 0
+                    ? () => onPageChanged(currentPage - 1)
+                    : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: currentPage > 0
+                        ? Colors.white
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: currentPage > 0
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.chevron_left,
+                    size: 18,
+                    color: currentPage > 0
+                        ? const Color(0xFF0F172A)
+                        : const Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  '${currentPage + 1} / $totalPages',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: currentPage < totalPages - 1
+                    ? () => onPageChanged(currentPage + 1)
+                    : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: currentPage < totalPages - 1
+                        ? Colors.white
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: currentPage < totalPages - 1
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: currentPage < totalPages - 1
+                        ? const Color(0xFF0F172A)
+                        : const Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

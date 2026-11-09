@@ -56,7 +56,7 @@ class DashboardController extends Controller
                     ->where('status', 'approved')
                     ->orderBy('date')
                     ->orderBy('start_time')
-                    ->limit(5)
+                    ->limit(50)
                     ->get(),
             ],
         ]);

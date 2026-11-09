@@ -29,6 +29,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  final Set<int> _loadedTabs = {0};
+
+  void _onNavigateToTab(int index) {
+    if (_selectedIndex != index) {
+      setState(() {
+        _selectedIndex = index;
+        _loadedTabs.add(index);
+      });
+    }
+  }
 
   final GlobalKey<EventsTabState> _eventsTabKey = GlobalKey<EventsTabState>();
   final GlobalKey<ComplaintsTabState> _complaintsTabKey =
@@ -232,28 +242,38 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      DashboardTab(
-        api: widget.api,
-        user: widget.user,
-        onNavigateToTab: (index) => setState(() => _selectedIndex = index),
-        onOpenCreateEvent: _openCreateEventSheet,
-        onOpenCreateComplaint: _openCreateComplaintSheet,
-      ),
-      RoomsTab(api: widget.api, user: widget.user),
-      EventsTab(
-        key: _eventsTabKey,
-        api: widget.api,
-        user: widget.user,
-        onOpenCreateEvent: _openCreateEventSheet,
-        onOpenCreateComplaint: _openCreateComplaintSheet,
-      ),
-      ComplaintsTab(
-        key: _complaintsTabKey,
-        api: widget.api,
-        user: widget.user,
-        onOpenCreateComplaint: _openCreateComplaintSheet,
-      ),
-      PublicCalendarScreen(api: widget.api, showAppBar: false),
+      _loadedTabs.contains(0)
+          ? DashboardTab(
+              api: widget.api,
+              user: widget.user,
+              onNavigateToTab: _onNavigateToTab,
+              onOpenCreateEvent: _openCreateEventSheet,
+              onOpenCreateComplaint: _openCreateComplaintSheet,
+            )
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(1)
+          ? RoomsTab(api: widget.api, user: widget.user)
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(2)
+          ? EventsTab(
+              key: _eventsTabKey,
+              api: widget.api,
+              user: widget.user,
+              onOpenCreateEvent: _openCreateEventSheet,
+              onOpenCreateComplaint: _openCreateComplaintSheet,
+            )
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(3)
+          ? ComplaintsTab(
+              key: _complaintsTabKey,
+              api: widget.api,
+              user: widget.user,
+              onOpenCreateComplaint: _openCreateComplaintSheet,
+            )
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(4)
+          ? PublicCalendarScreen(api: widget.api, showAppBar: false)
+          : const SizedBox.shrink(),
     ];
 
     final titles = [
@@ -353,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: Text(label),
                   selected: _selectedIndex == index,
                   onTap: () {
-                    setState(() => _selectedIndex = index);
+                    _onNavigateToTab(index);
                     Navigator.pop(context);
                   },
                 );

@@ -24,13 +24,13 @@ class PicDashboardController extends Controller
         $rooms = Room::sortRooms($rawRooms);
         $roomIds = $rooms->pluck('id');
 
+        $pendingEvents = Event::forRooms($roomIds->all())->where('status', 'pending')->count();
+
         $events = Event::with(['room', 'rooms'])
             ->forRooms($roomIds->all())
             ->orderBy('date')
             ->orderBy('start_time')
-            ->get();
-
-        $pendingEvents = $events->where('status', 'pending')->count();
+            ->paginate(5);
 
         return view('pic.dashboard', compact('rooms', 'events', 'pendingEvents'));
     }

@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <!-- Fonts -->
@@ -13,7 +13,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body @class([
-        'font-sans antialiased',
+        'font-sans antialiased text-slate-800 bg-gray-100 min-h-screen',
         'admin-theme' => auth()->check() && (
             str_contains(strtolower(auth()->user()->role?->role_name ?? ''), 'admin')
             || str_contains(strtolower(auth()->user()->role?->role_name ?? ''), 'waka')
@@ -21,21 +21,72 @@
             || str_contains(strtolower(auth()->user()->role?->role_name ?? ''), 'pic')
         ),
     ])>
-        <div x-data="{ sidebarOpen: true }" class="min-h-screen bg-gray-100">
+        <div 
+            x-data="{ 
+                sidebarOpen: window.innerWidth >= 1024,
+                isMobile: window.innerWidth < 1024
+            }" 
+            @resize.window="
+                isMobile = window.innerWidth < 1024;
+                if (!isMobile) sidebarOpen = true;
+            " 
+            class="min-h-screen bg-gray-100 flex flex-col relative"
+        >
+            <!-- Header Navigasi Khusus Mobile (< 1024px) -->
+            <header class="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-[#3d2b1c] bg-[#211c18] px-4 text-white shadow-md lg:hidden">
+                <div class="flex items-center gap-3">
+                    <button 
+                        @click="sidebarOpen = !sidebarOpen" 
+                        type="button" 
+                        class="inline-flex items-center justify-center rounded-lg p-2 text-stone-200 hover:bg-stone-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-500" 
+                        aria-label="Buka Menu Navigasi"
+                    >
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <a href="{{ route('home') }}" class="flex items-center gap-2">
+                        <img src="{{ asset('images/rapi-logo.png') }}" alt="Logo RAPI" class="h-8 w-8 rounded bg-white p-0.5 object-contain">
+                        <span class="text-sm font-bold tracking-wide text-amber-100">RAPI Sekolah</span>
+                    </a>
+                </div>
+                @auth
+                    <div class="flex items-center gap-2">
+                        <span class="rounded-full bg-amber-500/20 border border-amber-500/40 px-2.5 py-0.5 text-xs font-semibold text-amber-200">
+                            {{ auth()->user()->role?->role_name ?? 'User' }}
+                        </span>
+                    </div>
+                @endauth
+            </header>
+
+            <!-- Backdrop Gelap saat Sidebar Terbuka di Mobile -->
+            <div 
+                x-show="sidebarOpen && isMobile" 
+                x-transition:enter="transition-opacity ease-linear duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition-opacity ease-linear duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                @click="sidebarOpen = false" 
+                class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs lg:hidden"
+                style="display: none;"
+            ></div>
+
             @include('layouts.navigation')
 
-            <div class="flex min-h-screen flex-col transition-all duration-300" :class="sidebarOpen ? 'lg:pl-64' : 'lg:pl-20'">
+            <div class="flex min-h-screen flex-1 flex-col transition-all duration-300" :class="sidebarOpen ? 'lg:pl-64' : 'lg:pl-20'">
                 <!-- Page Heading -->
                 @isset($header)
                     <header class="bg-white shadow">
-                        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                        <div class="max-w-7xl mx-auto py-4 px-4 sm:py-6 sm:px-6 lg:px-8">
                             {{ $header }}
                         </div>
                     </header>
                 @endisset
 
                 <!-- Page Content -->
-                <main class="flex-1">
+                <main class="flex-1 w-full">
                     @if (isset($slot))
                         {{ $slot }}
                     @else

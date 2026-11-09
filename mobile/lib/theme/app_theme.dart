@@ -13,7 +13,9 @@ class AppTheme {
   static const Color textSecondary = Color(0xFF64748B); // slate-500
   static const Color sidebarBg = Color(0xFFF3F4F6); // gray-100
 
-  static ThemeData get lightTheme {
+  static final ThemeData lightTheme = _buildTheme();
+
+  static ThemeData _buildTheme() {
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(

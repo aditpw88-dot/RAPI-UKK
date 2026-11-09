@@ -13,13 +13,16 @@ class RoomController extends Controller
 {
     public function index(): JsonResponse
     {
+        $rooms = Room::query()
+            ->where('is_active', 'Aktif')
+            ->with('pic:id,fullname')
+            ->get()
+            ->sort(fn ($a, $b) => Room::compareRoomNames($a->room_name, $b->room_name))
+            ->values();
+
         return response()->json([
             'success' => true,
-            'data' => Room::query()
-                ->where('is_active', 'Aktif')
-                ->with('pic:id,fullname')
-                ->orderBy('room_name')
-                ->get(),
+            'data' => $rooms,
         ]);
     }
 

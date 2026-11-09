@@ -17,8 +17,11 @@ class RoomsTab extends StatefulWidget {
 class _RoomsTabState extends State<RoomsTab> {
   late Future<List<RoomModel>> _roomsFuture;
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
   String _roomFilter = 'Semua Ruangan';
+  static const int _pageSize = 8;
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -29,13 +32,68 @@ class _RoomsTabState extends State<RoomsTab> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   void _refresh() {
     setState(() {
+      _currentPage = 0;
       _roomsFuture = _fetchRooms();
     });
+  }
+
+  /// Urutan Ruangan Standar Sekolah:
+  /// 1. Ruang Wijaya
+  /// 2. DAK
+  /// 3. Lab 1 - 21
+  /// 4. Ruang 1 - seterusnya (termasuk Ruang Kelas 1 - 32)
+  /// 5. Ruangan lainnya
+  static int _compareRoomNames(String nameA, String nameB) {
+    List<dynamic> getRank(String rawName) {
+      final name = rawName.trim().replaceAll(RegExp(r'\s+'), ' ');
+      final lower = name.toLowerCase();
+
+      // 1. Ruang Wijaya
+      if (lower.contains('wijaya')) {
+        return [0, 0, lower];
+      }
+
+      // 2. DAK
+      if (lower.contains('dak')) {
+        return [0, 1, lower];
+      }
+
+      // 3. Lab 1 - 21
+      final labMatch =
+          RegExp(r'^lab\s*(\d+)', caseSensitive: false).firstMatch(name);
+      if (labMatch != null) {
+        return [1, int.tryParse(labMatch.group(1)!) ?? 0, lower];
+      }
+
+      // 4. Ruang 1 - seterusnya (termasuk Ruang Kelas 1 - 32 atau Ruang 1 - n)
+      final roomMatch = RegExp(
+        r'^(?:ruang\s+kelas|ruang|kelas)\s*(\d+)',
+        caseSensitive: false,
+      ).firstMatch(name);
+      if (roomMatch != null) {
+        return [2, int.tryParse(roomMatch.group(1)!) ?? 0, lower];
+      }
+
+      // 5. Ruangan lainnya
+      return [3, 0, lower];
+    }
+
+    final rankA = getRank(nameA);
+    final rankB = getRank(nameB);
+
+    if (rankA[0] != rankB[0]) {
+      return (rankA[0] as int).compareTo(rankB[0] as int);
+    }
+    if (rankA[1] != rankB[1]) {
+      return (rankA[1] as int).compareTo(rankB[1] as int);
+    }
+    return (rankA[2] as String).compareTo(rankB[2] as String);
   }
 
   Future<List<RoomModel>> _fetchRooms() async {
@@ -209,13 +267,20 @@ class _RoomsTabState extends State<RoomsTab> {
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() => _searchQuery = '');
+                          setState(() {
+                            _searchQuery = '';
+                            _currentPage = 0;
+                          });
                         },
                       )
                     : null,
               ),
-              onChanged: (val) =>
-                  setState(() => _searchQuery = val.trim().toLowerCase()),
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val.trim().toLowerCase();
+                  _currentPage = 0;
+                });
+              },
             ),
           ),
 
@@ -226,7 +291,6 @@ class _RoomsTabState extends State<RoomsTab> {
               children: [
                 'Semua Ruangan',
                 if (widget.user.isPic) 'Ruangan Saya',
-                'PIC Ditentukan',
                 'Belum Ada PIC',
               ].map((filter) {
                 final selected = _roomFilter == filter;
@@ -235,7 +299,12 @@ class _RoomsTabState extends State<RoomsTab> {
                   child: FilterChip(
                     label: Text(filter),
                     selected: selected,
-                    onSelected: (_) => setState(() => _roomFilter = filter),
+                    onSelected: (_) {
+                      setState(() {
+                        _roomFilter = filter;
+                        _currentPage = 0;
+                      });
+                    },
                     selectedColor: AppTheme.primaryColor.withValues(alpha: 0.15),
                     checkmarkColor: AppTheme.primaryColor,
                   ),
@@ -282,7 +351,11 @@ class _RoomsTabState extends State<RoomsTab> {
                     );
                   }
 
-                  final rooms = snapshot.data!;
+                  // 1. Urutkan daftar ruangan sesuai standar sekolah:
+                  // Ruang Wijaya -> DAK -> Lab 1-21 -> Ruang 1-seterusnya -> Lainnya
+                  final rooms = List<RoomModel>.from(snapshot.data!)
+                    ..sort((a, b) => _compareRoomNames(a.roomName, b.roomName));
+
                   final filtered = rooms.where((r) {
                     if (_searchQuery.isNotEmpty &&
                         !r.roomName.toLowerCase().contains(_searchQuery) &&
@@ -291,9 +364,6 @@ class _RoomsTabState extends State<RoomsTab> {
                     }
                     if (_roomFilter == 'Ruangan Saya' &&
                         (!widget.user.isPic || r.picId != widget.user.id)) {
-                      return false;
-                    }
-                    if (_roomFilter == 'PIC Ditentukan' && r.picId == null) {
                       return false;
                     }
                     if (_roomFilter == 'Belum Ada PIC' && r.picId != null) {
@@ -329,14 +399,30 @@ class _RoomsTabState extends State<RoomsTab> {
                     );
                   }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final room = filtered[index];
+                  final totalPages = (filtered.length / _pageSize).ceil();
+                  final safePage = _currentPage >= totalPages
+                      ? (totalPages - 1)
+                      : _currentPage;
+                  final pagedRooms = filtered
+                      .skip(safePage * _pageSize)
+                      .take(_pageSize)
+                      .toList();
+
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: ClampingScrollPhysics(),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          itemCount: pagedRooms.length,
+                          itemBuilder: (context, index) {
+                            final room = pagedRooms[index];
                       final isMyManagedRoom =
                           widget.user.isPic && room.picId == widget.user.id;
 
@@ -401,7 +487,7 @@ class _RoomsTabState extends State<RoomsTab> {
                                               child: const Text(
                                                 'PIC ANDA',
                                                 style: TextStyle(
-                                                  color: AppTheme.primaryColor,
+                                                  color: Colors.white,
                                                   fontSize: 9,
                                                   fontWeight: FontWeight.bold,
                                                 ),
@@ -456,11 +542,142 @@ class _RoomsTabState extends State<RoomsTab> {
                           ),
                         ),
                       );
-                    },
+                          },
+                        ),
+                      ),
+                      _buildPaginationBar(
+                        currentPage: safePage,
+                        totalPages: totalPages,
+                        totalItems: filtered.length,
+                        onPageChanged: (newPage) {
+                          setState(() => _currentPage = newPage);
+                          if (_scrollController.hasClients) {
+                            _scrollController.jumpTo(0);
+                          }
+                        },
+                      ),
+                    ],
                   );
                 },
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Kontrol Pagination Ruangan (Bersih, Responsif & Cepat)
+  Widget _buildPaginationBar({
+    required int currentPage,
+    required int totalPages,
+    required int totalItems,
+    required ValueChanged<int> onPageChanged,
+  }) {
+    if (totalItems <= _pageSize) return const SizedBox.shrink();
+
+    final startItem = currentPage * _pageSize + 1;
+    final endItem = (currentPage + 1) * _pageSize > totalItems
+        ? totalItems
+        : (currentPage + 1) * _pageSize;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              'Menampilkan $startItem-$endItem dari $totalItems ruangan',
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                onTap: currentPage > 0
+                    ? () => onPageChanged(currentPage - 1)
+                    : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: currentPage > 0
+                        ? Colors.white
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: currentPage > 0
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.chevron_left,
+                    size: 18,
+                    color: currentPage > 0
+                        ? const Color(0xFF0F172A)
+                        : const Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  '${currentPage + 1} / $totalPages',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: currentPage < totalPages - 1
+                    ? () => onPageChanged(currentPage + 1)
+                    : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: currentPage < totalPages - 1
+                        ? Colors.white
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: currentPage < totalPages - 1
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: currentPage < totalPages - 1
+                        ? const Color(0xFF0F172A)
+                        : const Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -4,12 +4,33 @@ class AppConstants {
   static const String appTitle = 'Agenda & Fasilitas Sekolah';
 
   // Default server URLs
-  static const String defaultEmulatorUrl = 'http://10.0.2.2:8000/api';
-  static const String defaultLocalhostUrl = 'http://127.0.0.1:8000/api';
-  static const String defaultLaragonVhostUrl = 'http://ukk-aditya.test/api';
+  static const String defaultLanUrl = 'http://192.168.0.172/UKK-aditya/public/api';
+  static const String defaultLanArtisanUrl = 'http://192.168.0.172:8000/api';
   static const String defaultLaragonPublicUrl = 'http://127.0.0.1/UKK-aditya/public/api';
+  static const String defaultLaragonVhostUrl = 'http://ukk-aditya.test/api';
+  static const String defaultLocalhostUrl = 'http://127.0.0.1:8000/api';
+  static const String defaultEmulatorUrl = 'http://10.0.2.2:8000/api';
+  static const String defaultProductionUrl = 'https://skansaba-rapi.my.id/api';
+
+  // URL default yang aktif dipakai aplikasi
+  static const String defaultAppUrl = defaultLanUrl;
 
   static const List<Map<String, String>> serverPresets = [
+    {
+      'label': 'HP Fisik Wi-Fi (192.168.0.172 Laragon)',
+      'url': defaultLanUrl,
+      'desc': 'Rekomendasi untuk HP Android fisik yang satu Wi-Fi dengan PC.',
+    },
+    {
+      'label': 'HP Fisik Wi-Fi (192.168.0.172 Artisan 8000)',
+      'url': defaultLanArtisanUrl,
+      'desc': 'Gunakan bila menjalankan "php artisan serve" di PC.',
+    },
+    {
+      'label': 'Server Hosting Online (skansaba-rapi.my.id)',
+      'url': defaultProductionUrl,
+      'desc': 'Server produksi cPanel resmi.',
+    },
     {
       'label': 'Laragon Virtual Host (ukk-aditya.test)',
       'url': defaultLaragonVhostUrl,
