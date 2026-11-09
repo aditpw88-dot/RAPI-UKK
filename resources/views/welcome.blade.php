@@ -1062,35 +1062,16 @@
             padding: 2px 4px !important;
         }
 
-        /* Di layar HP (< 640px), tampilkan agenda sebagai titik indikator warna yang rapi & presisi */
-        #calendar .fc-daygrid-day-events {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: wrap !important;
-            justify-content: center !important;
-            gap: 2.5px !important;
-            padding: 2px 1px !important;
-            min-height: 10px !important;
-        }
-
-        #calendar .fc-daygrid-event-harness {
-            margin: 0 !important;
-            display: inline-flex !important;
-        }
-
         #calendar .fc-daygrid-event {
-            width: 7px !important;
-            height: 7px !important;
-            min-width: 7px !important;
-            border-radius: 50% !important;
-            padding: 0 !important;
-            margin: 1px !important;
-            border: none !important;
-            box-shadow: none !important;
+            font-size: 0.7rem !important;
+            padding: 1.5px 3px !important;
+            margin: 1px 0 !important;
+            border-radius: 4px !important;
+            line-height: 1.25 !important;
         }
 
-        #calendar .fc-daygrid-event .fc-event-title,
-        #calendar .fc-daygrid-event .fc-event-time {
+        #calendar .fc-daygrid-more-link,
+        #calendar .fc-more-link {
             display: none !important;
         }
 
@@ -1655,6 +1636,7 @@
                 today: 'Hari Ini'
             },
             dayMaxEvents: false,
+            dayMaxEventRows: false,
             eventDisplay: 'block',
             displayEventTime: false, // Hanya menampilkan nama agenda saja di badge kalender
             eventOrder: (a, b) => (b.extendedProps.createdAt || '').localeCompare(a.extendedProps.createdAt || ''),
