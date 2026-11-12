@@ -26,17 +26,38 @@ class Event extends Model
         'completed_at',
         'move_reason',
         'rejection_reason',
+        'cancellation_reason',
+        'cancellation_status',
+        'cancellation_requested_at',
+        'cancellation_approved_by',
+        'cancellation_approved_at',
+        'cancellation_rejected_reason',
+    ];
+
+    protected $appends = [
+        'lifecycle_status',
+        'lifecycle_status_label',
     ];
 
     protected function casts(): array
     {
         return [
             'completed_at' => 'datetime',
+            'cancellation_requested_at' => 'datetime',
+            'cancellation_approved_at' => 'datetime',
         ];
     }
 
     public function getLifecycleStatusAttribute(): string
     {
+        if ($this->status === 'cancelled') {
+            return 'cancelled';
+        }
+
+        if ($this->cancellation_status === 'pending') {
+            return 'cancellation_pending';
+        }
+
         if ($this->status !== 'approved') {
             return $this->status;
         }
@@ -65,14 +86,37 @@ class Event extends Model
         return 'in_progress';
     }
 
+    public function isCompletedOver24Hours(?\Illuminate\Support\Carbon $now = null): bool
+    {
+        if ($this->lifecycle_status !== 'completed') {
+            return false;
+        }
+
+        $now = $now ?: now();
+        $threshold = $now->copy()->subHours(24);
+
+        $startDate = is_string($this->date) ? $this->date : ($this->date?->format('Y-m-d') ?? '');
+        $endDate = $this->end_date ? (is_string($this->end_date) ? $this->end_date : $this->end_date->format('Y-m-d')) : $startDate;
+        $endTime = $this->end_time ?: '23:59:59';
+        $endDateTime = \Illuminate\Support\Carbon::parse("{$endDate} {$endTime}");
+
+        $finishedAt = $this->completed_at
+            ? \Illuminate\Support\Carbon::parse($this->completed_at)
+            : $endDateTime;
+
+        return $finishedAt->lessThanOrEqualTo($threshold);
+    }
+
     public function getLifecycleStatusLabelAttribute(): string
     {
         return match ($this->lifecycle_status) {
             'pending' => 'Menunggu Persetujuan',
+            'cancellation_pending' => 'Menunggu Pembatalan',
             'upcoming' => 'Belum Terlaksana',
             'in_progress' => 'Sedang Terlaksana',
             'completed' => 'Sudah Terlaksana',
             'rejected' => 'Ditolak',
+            'cancelled' => 'Dibatalkan',
             default => ucfirst($this->lifecycle_status),
         };
     }
@@ -81,10 +125,12 @@ class Event extends Model
     {
         return match ($this->lifecycle_status) {
             'pending' => 'bg-amber-100 text-amber-800',
+            'cancellation_pending' => 'bg-purple-100 text-purple-800',
             'upcoming' => 'bg-amber-100 text-amber-800',
             'in_progress' => 'bg-emerald-100 text-emerald-800',
             'completed' => 'bg-blue-100 text-blue-800',
             'rejected' => 'bg-red-100 text-red-700',
+            'cancelled' => 'bg-rose-100 text-rose-800',
             default => 'bg-gray-100 text-gray-700',
         };
     }
@@ -96,9 +142,9 @@ class Event extends Model
                 $status = is_array($e) ? ($e['lifecycle_status'] ?? $e['status'] ?? '') : ($e->lifecycle_status ?? $e->status ?? '');
                 return match ($status) {
                     'in_progress' => 0,
-                    'upcoming', 'pending' => 1,
+                    'upcoming', 'pending', 'cancellation_pending' => 1,
                     'completed' => 2,
-                    'rejected' => 3,
+                    'rejected', 'cancelled' => 3,
                     default => 2,
                 };
             };
@@ -212,7 +258,7 @@ class Event extends Model
                         $q->whereRaw('COALESCE(end_date, date) < ?', [$date])
                             ->orWhere(function ($q) use ($date, $time) {
                                 $q->whereRaw('COALESCE(end_date, date) = ?', [$date])
-                                    ->where('end_time', '<=', $time);
+                                    ->whereRaw("COALESCE(end_time, '23:59:59') <= ?", [$time]);
                             });
                     });
             });
@@ -300,5 +346,88 @@ class Event extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function cancellationApprover()
+    {
+        return $this->belongsTo(User::class, 'cancellation_approved_by');
+    }
+
+    /**
+     * Memeriksa apakah agenda dapat diajukan pembatalan oleh Guru
+     */
+    public function canBeCancelledByGuru(): bool
+    {
+        if ($this->status === 'cancelled' || $this->status === 'rejected') {
+            return false;
+        }
+
+        if ($this->cancellation_status === 'pending') {
+            return false;
+        }
+
+        if ($this->completed_at !== null) {
+            return false;
+        }
+
+        $now = now();
+        $startDate = is_string($this->date) ? $this->date : ($this->date?->format('Y-m-d') ?? '');
+        $endDate = $this->end_date ? (is_string($this->end_date) ? $this->end_date : $this->end_date->format('Y-m-d')) : $startDate;
+        $endTime = $this->end_time ?: '23:59:59';
+        $endDateTime = \Illuminate\Support\Carbon::parse("{$endDate} {$endTime}");
+
+        return $now->lessThan($endDateTime);
+    }
+
+    /**
+     * Memeriksa apakah agenda dapat dibatalkan langsung oleh Admin.
+     * Hanya bisa dibatalkan jika agenda berstatus disetujui (approved) dan belum terlaksana (upcoming).
+     * Jika agenda sudah terlaksana (completed) atau sedang terlaksana (in_progress), tidak bisa dibatalkan.
+     */
+    public function canBeCancelledByAdmin(): bool
+    {
+        if ($this->status !== 'approved') {
+            return false;
+        }
+
+        if ($this->cancellation_status === 'pending') {
+            return false;
+        }
+
+        if ($this->completed_at !== null) {
+            return false;
+        }
+
+        return $this->lifecycle_status === 'upcoming';
+    }
+
+    /**
+     * Memeriksa apakah agenda dapat dihapus oleh Admin / Waka.
+     * Agenda yang sedang berlangsung (in_progress) tidak dapat dihapus.
+     */
+    public function canBeDeletedByAdmin(): bool
+    {
+        return $this->lifecycle_status !== 'in_progress';
+    }
+
+    /**
+     * Memeriksa apakah ruangan agenda dapat dipindahkan oleh Admin / Waka.
+     * Agenda yang berstatus ditolak, dibatalkan, atau sudah terlaksana (completed/expired) tidak dapat dipindahkan.
+     */
+    public function canBeMovedByAdmin(): bool
+    {
+        if (in_array($this->status, ['rejected', 'cancelled'])) {
+            return false;
+        }
+
+        if ($this->cancellation_status === 'pending') {
+            return false;
+        }
+
+        if ($this->completed_at !== null) {
+            return false;
+        }
+
+        return $this->lifecycle_status !== 'completed';
     }
 }

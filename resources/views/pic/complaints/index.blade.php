@@ -51,6 +51,18 @@
                     </div>
                 </div>
 
+                <div class="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs text-blue-900 shadow-2xs">
+                    <div class="flex items-start gap-2.5">
+                        <svg class="h-4 w-4 shrink-0 text-blue-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                            <span class="font-bold">Info Pengarsipan Otomatis (24 Jam):</span>
+                            Laporan yang berstatus <strong>Sudah Diperbaiki</strong> akan tetap ditampilkan di halaman ini selama <strong>24 jam</strong> sejak selesai diperbaiki. Setelah lewat 24 jam, laporan akan diarsipkan dari daftar manajemen ini, tetapi tersimpan permanen dan dapat dilihat kapan saja di menu <a href="{{ route('pic.reports.complaints') }}" class="font-bold underline text-blue-800 hover:text-blue-950">Laporan Kerusakan PIC</a>.
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Form Pencarian & Filter Status -->
                 <form method="GET" action="{{ route('pic.complaints.index') }}" class="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_16rem_auto_auto]">
                     <div class="relative">

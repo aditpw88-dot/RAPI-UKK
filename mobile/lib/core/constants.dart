@@ -76,11 +76,21 @@ class AppConstants {
     return 'Sesi $sessionNumber (${session['start']} - ${session['end']})';
   }
 
-  // Repair Statuses
+  // Repair Statuses (Sesuai dengan Web Laravel: Belum, Sedang, Menunggu, Sudah)
   static const List<String> repairStatuses = [
     'Belum Diperbaiki',
+    'Sedang Diperbaiki',
     'Menunggu Spare Part',
     'Sudah Diperbaiki',
+  ];
+
+  // Event Categories (Sesuai config/event_types.php pada Web Laravel)
+  static const List<String> eventCategories = [
+    'Rapat / Koordinasi',
+    'Akademik / Ujian',
+    'Kegiatan Sekolah',
+    'Upacara',
+    'Lainnya',
   ];
 
   static Color statusColor(String? status) {
@@ -88,7 +98,10 @@ class AppConstants {
     if (s.contains('sudah') || s.contains('approved') || s.contains('setujui')) {
       return const Color(0xFF10B981); // Emerald green
     }
-    if (s.contains('spare part') || s.contains('menunggu') || s.contains('pending')) {
+    if (s.contains('sedang diperbaiki') || s.contains('sedang terlaksana')) {
+      return const Color(0xFF059669); // Emerald
+    }
+    if (s.contains('spare part') || s.contains('menunggu') || s.contains('pending') || s.contains('belum terlaksana')) {
       return const Color(0xFFF59E0B); // Amber
     }
     if (s.contains('belum') || s.contains('reject') || s.contains('ditolak')) {

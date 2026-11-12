@@ -37,6 +37,7 @@ return [
 
     'whatsapp' => [
         'pic_phone_number' => env('WHATSAPP_PIC_PHONE_NUMBER', '083115722144'),
+        'fonnte_token' => env('FONNTE_TOKEN', 'S3ZzBAiWVyoLvoiFaQ3w'),
     ],
 
 ];

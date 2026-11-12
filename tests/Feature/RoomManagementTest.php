@@ -80,10 +80,11 @@ class RoomManagementTest extends TestCase
             ->assertSee('<summary class="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold', false)
             ->assertSee('Lihat Identitas Ruangan')
             ->assertSee('<p class="text-base font-semibold text-slate-900">Lab Identitas</p>', false)
-            ->assertSee('Penanggung jawab: Pic-identity')
-            ->assertSee('WhatsApp: 081234567890')
+            ->assertSee('Penanggung jawab : Pic-identity')
+            ->assertSee('Data Diri')
+            ->assertSee('Nomor whatsapp: 081234567890')
+            ->assertSee('gmail: pic-identity@example.com')
             ->assertSee('Kuantitas: 36 orang')
-            ->assertSee('Status: Aktif')
             ->assertDontSee('<p class="text-lg font-semibold text-slate-900">Lab Identitas</p>', false);
     }
 
@@ -152,6 +153,58 @@ class RoomManagementTest extends TestCase
         $responsePage2->assertSee('Menampilkan 11–12 dari 12 ruangan', false);
         $responsePage2->assertSee('Lab 11');
         $responsePage2->assertSee('Lab 12');
+    }
+
+    public function test_admin_rooms_filter_by_condition_and_status_availability(): void
+    {
+        $adminRole = $this->createRole('Admin');
+        $picRole = $this->createRole('PIC Ruang');
+        $admin = $this->createUser('admin-filter', $adminRole);
+        $pic = $this->createUser('pic-filter', $picRole);
+
+        $activeRoom = Room::create([
+            'room_name' => 'Lab Aktif Tersedia',
+            'capacity' => 36,
+            'pic_id' => $pic->id,
+            'is_active' => 'Aktif',
+        ]);
+
+        $inactiveRoom = Room::create([
+            'room_name' => 'Lab Rusak Tidak Aktif',
+            'capacity' => 30,
+            'pic_id' => $pic->id,
+            'is_active' => 'Tidak aktif',
+        ]);
+
+        // Filter condition=active
+        $this->actingAs($admin)
+            ->get(route('admin.rooms', ['condition' => 'active']))
+            ->assertOk()
+            ->assertSee('Lab Aktif Tersedia')
+            ->assertDontSee('Lab Rusak Tidak Aktif');
+
+        // Filter condition=inactive
+        $this->actingAs($admin)
+            ->get(route('admin.rooms', ['condition' => 'inactive']))
+            ->assertOk()
+            ->assertSee('Lab Rusak Tidak Aktif')
+            ->assertSee('Kondisi: Tidak aktif')
+            ->assertSee('Status: Tidak tersedia')
+            ->assertDontSee('Lab Aktif Tersedia');
+
+        // Filter status=available
+        $this->actingAs($admin)
+            ->get(route('admin.rooms', ['status' => 'available']))
+            ->assertOk()
+            ->assertSee('Lab Aktif Tersedia')
+            ->assertDontSee('Lab Rusak Tidak Aktif');
+
+        // Filter status=unavailable
+        $this->actingAs($admin)
+            ->get(route('admin.rooms', ['status' => 'unavailable']))
+            ->assertOk()
+            ->assertSee('Lab Rusak Tidak Aktif')
+            ->assertDontSee('Lab Aktif Tersedia');
     }
 
     private function createRole(string $name): Role

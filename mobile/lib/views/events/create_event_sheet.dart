@@ -36,8 +36,9 @@ class _CreateEventSheetState extends State<CreateEventSheet> {
   @override
   void initState() {
     super.initState();
-    if (widget.rooms.isNotEmpty) {
-      _selectedRoomId = widget.rooms.first.id;
+    final activeRooms = widget.rooms.where((r) => r.isActive);
+    if (activeRooms.isNotEmpty) {
+      _selectedRoomId = activeRooms.first.id;
     }
     // Default date is tomorrow (backend requires date after today)
     _selectedDate = DateTime.now().add(const Duration(days: 1));

@@ -16,6 +16,7 @@ Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']
 Route::get('/rooms', [RoomController::class, 'index']);
 Route::get('/rooms/{room}', [RoomController::class, 'show']);
 Route::get('/events', [EventController::class, 'index']);
+Route::get('/calendar/holidays', [\App\Http\Controllers\CalendarController::class, 'holidays']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -25,9 +26,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms', [RoomController::class, 'store']);
     Route::put('/rooms/{room}', [RoomController::class, 'update']);
     Route::patch('/rooms/{room}', [RoomController::class, 'update']);
+    Route::patch('/rooms/{room}/status', [RoomController::class, 'updateStatus']);
     Route::delete('/rooms/{room}', [RoomController::class, 'destroy']);
 
     Route::get('/events/mine', [EventController::class, 'mine']);
+    Route::get('/events/mine/approved', [EventController::class, 'approvedMine']);
     Route::get('/events/pending', [EventController::class, 'pending']);
     Route::get('/events/managed', [EventController::class, 'managed']);
     Route::post('/events', [EventController::class, 'store']);

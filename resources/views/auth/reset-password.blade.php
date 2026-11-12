@@ -1,6 +1,24 @@
 <x-guest-layout>
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
+    @if ($errors->any())
+        <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 shadow-xs">
+            <div class="flex items-start gap-3">
+                <svg class="h-5 w-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="flex-1">
+                    <p class="font-semibold text-red-800">Perhatian / Kendala:</p>
+                    <ul class="mt-1 list-disc list-inside space-y-1 text-xs text-red-700">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="mb-6">
         <p class="text-xs font-semibold uppercase tracking-widest text-indigo-600">Pemulihan Akun · Langkah {{ ['email' => '1 dari 3', 'otp' => '2 dari 3', 'password' => '3 dari 3'][$step] }}</p>
         <h1 class="mt-2 text-2xl font-bold text-gray-900">

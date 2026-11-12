@@ -326,16 +326,95 @@
                 <form id="create-complaint-form" method="POST" action="{{ route('admin.complaints.store') }}" enctype="multipart/form-data" class="space-y-4 pt-4" data-confirm-action="mengirim laporan kerusakan" data-confirm-item="Laporan kerusakan baru" data-confirm-title="Konfirmasi Pengaduan Kerusakan" data-confirm-message="Apakah Anda yakin ingin mengirim laporan pengaduan kerusakan ini? Pastikan detail ruangan dan kerusakan sudah sesuai.">
                     @csrf
 
+                    <!-- Pilih Ruangan Sistem Rolldown -->
                     <div>
-                        <label for="complaint_room_id" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Pilih Ruangan <span class="text-red-500">*</span></label>
-                        <select id="complaint_room_id" name="room_id" required class="w-full rounded-lg border-gray-300 text-sm font-medium focus:border-slate-800 focus:ring-1 focus:ring-slate-800">
-                            <option value="">Pilih ruangan yang bermasalah</option>
-                            @foreach ($rooms as $room)
-                                <option value="{{ $room->id }}" @selected(old('room_id', request('room_id')) == $room->id)>
-                                    {{ $room->room_name }} (Kapasitas {{ $room->capacity }})
-                                </option>
-                            @endforeach
-                        </select>
+                        <label for="complaint_room_input" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            Pilih Ruangan <span class="text-red-500">*</span>
+                        </label>
+                        
+                        <div class="relative" id="complaint-room-combobox">
+                            <div class="relative cursor-pointer" id="complaint_room_toggle_wrap">
+                                <input 
+                                    type="text" 
+                                    id="complaint_room_input" 
+                                    autocomplete="off" 
+                                    placeholder="Pilih ruangan yang bermasalah..." 
+                                    value="{{ $rooms->firstWhere('id', old('room_id', request('room_id')))?->room_name ? $rooms->firstWhere('id', old('room_id', request('room_id')))->room_name . ' (Kapasitas ' . $rooms->firstWhere('id', old('room_id', request('room_id')))->capacity . ')' : '' }}"
+                                    readonly
+                                    class="w-full cursor-pointer rounded-xl border border-slate-300 bg-white py-2.5 pl-3.5 pr-10 text-sm font-medium text-slate-800 shadow-2xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                                >
+                                <button 
+                                    type="button" 
+                                    id="complaint_room_toggle" 
+                                    tabindex="-1" 
+                                    aria-label="Buka pilihan ruangan" 
+                                    class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                >
+                                    <svg class="h-4 w-4 transition-transform duration-200" id="complaint_room_arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Hidden native select for form submit and validation -->
+                            <select id="complaint_room_id" name="room_id" required class="sr-only" tabindex="-1" style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px;">
+                                <option value="">Pilih ruangan yang bermasalah</option>
+                                @foreach ($rooms as $room)
+                                    <option 
+                                        value="{{ $room->id }}" 
+                                        data-name="{{ $room->room_name }}" 
+                                        data-capacity="{{ $room->capacity }}"
+                                        @selected(old('room_id', request('room_id')) == $room->id)
+                                    >
+                                        {{ $room->room_name }} (Kapasitas {{ $room->capacity }})
+                                    </option>
+                                @endforeach
+                            </select>
+
+                            <!-- Rolldown Dropdown Panel -->
+                            <div id="complaint_room_dropdown" class="hidden absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl flex flex-col">
+                                <!-- Search bar inside rolldown -->
+                                <div class="p-2 border-b border-slate-100 bg-slate-50">
+                                    <div class="relative">
+                                        <input 
+                                            type="text" 
+                                            id="complaint_room_search" 
+                                            placeholder="Ketik untuk mencari ruangan..." 
+                                            class="w-full rounded-lg border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs focus:border-slate-800 focus:ring-1 focus:ring-slate-800"
+                                        >
+                                        <svg class="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <!-- Rolldown Options List -->
+                                <ul id="complaint_room_list" role="listbox" class="max-h-44 overflow-y-auto divide-y divide-slate-100 p-1 text-sm">
+                                    @foreach ($rooms as $room)
+                                        <li 
+                                            data-room-id="{{ $room->id }}" 
+                                            data-room-name="{{ $room->room_name }}" 
+                                            data-capacity="{{ $room->capacity }}"
+                                            class="complaint-room-item flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors select-none text-slate-800 text-xs sm:text-sm"
+                                        >
+                                            <div class="flex items-center gap-2">
+                                                <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                                    </svg>
+                                                </div>
+                                                <span class="font-semibold text-slate-800">{{ $room->room_name }}</span>
+                                            </div>
+                                            <span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
+                                                Kapasitas {{ $room->capacity }}
+                                            </span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                <div id="complaint_room_empty" class="hidden px-4 py-3 text-center text-xs text-slate-500">
+                                    Tidak ada ruangan yang cocok dengan pencarian.
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div>
@@ -344,11 +423,65 @@
                     </div>
 
                     <div>
-                        <label for="complaint_photo" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Foto Bukti Kerusakan <span class="text-red-500">*</span></label>
-                        <input id="complaint_photo" name="photo" type="file" accept="image/*" required class="w-full rounded-lg border border-gray-300 text-xs file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
-                        <p class="mt-1 text-[11px] text-slate-500">Pilih file gambar (JPG, PNG, JPEG, WEBP), maksimal 5MB.</p>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Foto Bukti Kerusakan <span class="text-red-500">*</span></label>
+                        <input id="complaint_photo" name="photo" type="file" accept="image/*" required class="hidden">
+                        <input id="complaint_camera_input" type="file" accept="image/*" capture="environment" class="hidden">
+                        <input id="complaint_gallery_input" type="file" accept="image/*" class="hidden">
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                            <button type="button" id="btn-admin-camera-hp" class="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 active:scale-[0.98] transition">
+                                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                <span>Ambil via Kamera HP</span>
+                            </button>
+                            <button type="button" id="btn-admin-gallery" class="flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 active:scale-[0.98] transition">
+                                <svg class="h-4 w-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>Pilih dari Galeri / File</span>
+                            </button>
+                            <!-- Tombol Kamera Laptop / PC (Webcam) -->
+                            <button type="button" id="btn-admin-webcam" class="sm:col-span-2 flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-3 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-orange-700 active:scale-[0.98] transition">
+                                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                                <span>Gunakan Kamera Laptop / PC (Webcam)</span>
+                            </button>
+                        </div>
+                        <p class="mt-1.5 text-[11px] text-slate-500">Ambil foto langsung dari kamera laptop/HP atau pilih file gambar (maksimal 5MB).</p>
+
+                        <!-- Area Live Webcam Laptop -->
+                        <div id="admin-webcam-container" class="mt-2.5 hidden rounded-xl border border-orange-200 bg-orange-50/60 p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-orange-950 flex items-center gap-1.5">
+                                    <span class="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    Kamera Laptop Aktif
+                                </span>
+                                <button type="button" id="btn-admin-close-webcam" class="text-xs font-semibold text-red-600 hover:text-red-800 hover:underline">
+                                    Tutup Kamera
+                                </button>
+                            </div>
+                            <video id="admin-webcam-video" class="w-full max-h-56 rounded-lg bg-black object-contain" autoplay muted playsinline></video>
+                            <div class="mt-2.5 flex items-center justify-center gap-2">
+                                <button type="button" id="btn-admin-capture-webcam" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 active:scale-[0.98] transition shadow-xs">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    </svg>
+                                    <span>Jepret Foto Kerusakan</span>
+                                </button>
+                            </div>
+                            <p id="admin-webcam-msg" class="mt-1.5 text-center text-[11px] text-slate-600"></p>
+                        </div>
+
+                        <!-- Pratinjau Foto -->
                         <div id="complaint-photo-preview-container" class="mt-2 hidden">
-                            <img id="complaint-photo-preview" src="#" alt="Pratinjau Foto Kerusakan" class="h-40 w-full rounded-lg border border-slate-200 object-cover">
+                            <div class="relative">
+                                <img id="complaint-photo-preview" src="#" alt="Pratinjau Foto Kerusakan" class="h-40 w-full rounded-lg border border-slate-200 object-cover">
+                                <button type="button" id="btn-admin-remove-photo" class="absolute top-2 right-2 rounded-md bg-red-600/90 text-white px-2 py-1 text-[11px] font-semibold hover:bg-red-700">
+                                    ✕ Hapus
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -399,8 +532,202 @@
     const cancelCreateComplaintBtn = document.getElementById('create-complaint-cancel-btn');
     const createComplaintBackdrop = document.getElementById('create-complaint-modal-backdrop');
     const complaintPhotoInput = document.getElementById('complaint_photo');
+    const complaintCameraInput = document.getElementById('complaint_camera_input');
+    const complaintGalleryInput = document.getElementById('complaint_gallery_input');
+    const btnAdminCameraHp = document.getElementById('btn-admin-camera-hp');
+    const btnAdminGallery = document.getElementById('btn-admin-gallery');
+    const btnAdminRemovePhoto = document.getElementById('btn-admin-remove-photo');
     const complaintPhotoPreviewContainer = document.getElementById('complaint-photo-preview-container');
     const complaintPhotoPreview = document.getElementById('complaint-photo-preview');
+
+    // Rolldown Pemilihan Ruangan
+    const complaintRoomCombobox = document.getElementById('complaint-room-combobox');
+    const complaintRoomToggleWrap = document.getElementById('complaint_room_toggle_wrap');
+    const complaintRoomDropdown = document.getElementById('complaint_room_dropdown');
+    const complaintRoomArrow = document.getElementById('complaint_room_arrow');
+    const complaintRoomInput = document.getElementById('complaint_room_input');
+    const complaintRoomIdSelect = document.getElementById('complaint_room_id');
+    const complaintRoomSearch = document.getElementById('complaint_room_search');
+    const complaintRoomItems = document.querySelectorAll('.complaint-room-item');
+    const complaintRoomEmpty = document.getElementById('complaint_room_empty');
+
+    function toggleRoomDropdown(open = null) {
+        if (!complaintRoomDropdown) return;
+        const shouldOpen = open !== null ? open : complaintRoomDropdown.classList.contains('hidden');
+        if (shouldOpen) {
+            complaintRoomDropdown.classList.remove('hidden');
+            complaintRoomArrow?.classList.add('rotate-180');
+            setTimeout(() => complaintRoomSearch?.focus(), 50);
+        } else {
+            complaintRoomDropdown.classList.add('hidden');
+            complaintRoomArrow?.classList.remove('rotate-180');
+        }
+    }
+
+    complaintRoomToggleWrap?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleRoomDropdown();
+    });
+
+    complaintRoomSearch?.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        let hasVisible = false;
+        complaintRoomItems.forEach((item) => {
+            const name = (item.dataset.roomName || '').toLowerCase();
+            const matches = name.includes(query);
+            item.style.display = matches ? 'flex' : 'none';
+            if (matches) hasVisible = true;
+        });
+        if (complaintRoomEmpty) {
+            complaintRoomEmpty.classList.toggle('hidden', hasVisible);
+        }
+    });
+
+    complaintRoomItems.forEach((item) => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = item.dataset.roomId;
+            const name = item.dataset.roomName;
+            const capacity = item.dataset.capacity;
+            
+            if (complaintRoomIdSelect) {
+                complaintRoomIdSelect.value = id;
+            }
+            if (complaintRoomInput) {
+                complaintRoomInput.value = `${name} (Kapasitas ${capacity})`;
+                complaintRoomInput.classList.remove('text-slate-400');
+                complaintRoomInput.classList.add('text-slate-800', 'font-semibold');
+            }
+
+            complaintRoomItems.forEach((el) => {
+                el.classList.remove('bg-amber-50', 'text-amber-900', 'font-semibold');
+            });
+            item.classList.add('bg-amber-50', 'text-amber-900', 'font-semibold');
+
+            toggleRoomDropdown(false);
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (complaintRoomCombobox && !complaintRoomCombobox.contains(e.target)) {
+            toggleRoomDropdown(false);
+        }
+    });
+
+    // Laptop / PC Webcam Logic
+    const btnAdminWebcam = document.getElementById('btn-admin-webcam');
+    const adminWebcamContainer = document.getElementById('admin-webcam-container');
+    const adminWebcamVideo = document.getElementById('admin-webcam-video');
+    const btnAdminCaptureWebcam = document.getElementById('btn-admin-capture-webcam');
+    const btnAdminCloseWebcam = document.getElementById('btn-admin-close-webcam');
+    const adminWebcamMsg = document.getElementById('admin-webcam-msg');
+    let adminWebcamStream = null;
+
+    function stopAdminWebcam() {
+        if (adminWebcamStream) {
+            adminWebcamStream.getTracks().forEach((track) => track.stop());
+            adminWebcamStream = null;
+        }
+        if (adminWebcamVideo) {
+            adminWebcamVideo.srcObject = null;
+        }
+        if (adminWebcamContainer) {
+            adminWebcamContainer.classList.add('hidden');
+        }
+        if (adminWebcamMsg) {
+            adminWebcamMsg.textContent = '';
+        }
+    }
+
+    btnAdminWebcam?.addEventListener('click', async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Browser tidak mendukung akses kamera langsung atau memerlukan HTTPS.');
+            return;
+        }
+
+        try {
+            stopAdminWebcam();
+            if (adminWebcamContainer) adminWebcamContainer.classList.remove('hidden');
+            if (adminWebcamMsg) adminWebcamMsg.textContent = 'Meminta izin kamera laptop...';
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+                audio: false
+            });
+            adminWebcamStream = stream;
+            if (adminWebcamVideo) {
+                adminWebcamVideo.srcObject = stream;
+                await adminWebcamVideo.play();
+            }
+            if (adminWebcamMsg) adminWebcamMsg.textContent = 'Kamera laptop aktif. Arahkan ke objek lalu klik "Jepret Foto Kerusakan".';
+        } catch (err) {
+            console.error('Webcam error:', err);
+            let errorMsg = 'Tidak dapat membuka kamera laptop.';
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                errorMsg = 'Izin kamera laptop ditolak browser. Silakan izinkan akses kamera pada icon gembok / izin browser Anda.';
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                errorMsg = 'Perangkat kamera laptop / webcam tidak ditemukan.';
+            }
+            if (adminWebcamMsg) adminWebcamMsg.textContent = errorMsg;
+            alert(errorMsg);
+        }
+    });
+
+    btnAdminCaptureWebcam?.addEventListener('click', () => {
+        if (!adminWebcamVideo || !adminWebcamStream) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = adminWebcamVideo.videoWidth || 640;
+        canvas.height = adminWebcamVideo.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(adminWebcamVideo, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob((blob) => {
+            if (!blob) return;
+            const file = new File([blob], `kerusakan-laptop-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            setComplaintPhoto(file);
+            stopAdminWebcam();
+        }, 'image/jpeg', 0.88);
+    });
+
+    btnAdminCloseWebcam?.addEventListener('click', stopAdminWebcam);
+
+    btnAdminCameraHp?.addEventListener('click', () => complaintCameraInput?.click());
+    btnAdminGallery?.addEventListener('click', () => complaintGalleryInput?.click());
+
+    function setComplaintPhoto(file) {
+        if (!file || !complaintPhotoInput) return;
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        complaintPhotoInput.files = transfer.files;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (complaintPhotoPreview && complaintPhotoPreviewContainer) {
+                complaintPhotoPreview.src = e.target.result;
+                complaintPhotoPreviewContainer.classList.remove('hidden');
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    complaintCameraInput?.addEventListener('change', function() {
+        const file = this.files?.[0];
+        if (file) setComplaintPhoto(file);
+    });
+
+    complaintGalleryInput?.addEventListener('change', function() {
+        const file = this.files?.[0];
+        if (file) setComplaintPhoto(file);
+    });
+
+    btnAdminRemovePhoto?.addEventListener('click', () => {
+        if (complaintPhotoInput) complaintPhotoInput.value = '';
+        if (complaintCameraInput) complaintCameraInput.value = '';
+        if (complaintGalleryInput) complaintGalleryInput.value = '';
+        if (complaintPhotoPreviewContainer) complaintPhotoPreviewContainer.classList.add('hidden');
+        stopAdminWebcam();
+    });
 
     function openCreateComplaintModal() {
         if (!createComplaintModal) return;
@@ -410,6 +737,8 @@
     }
 
     function closeCreateComplaintModal() {
+        stopAdminWebcam();
+        toggleRoomDropdown(false);
         if (!createComplaintModal) return;
         createComplaintModal.classList.add('hidden');
         createComplaintModal.classList.remove('flex');

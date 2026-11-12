@@ -47,17 +47,17 @@
                 </a>
             @endif
             @if (auth()->user()->role && str_contains(strtolower(auth()->user()->role->role_name), 'guru'))
-                <a href="{{ route('events.create') }}" @click="if (isMobile) sidebarOpen = false" class="nav-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm {{ request()->routeIs('events.create') ? 'nav-active' : '' }}" title="Ajukan Peminjaman">
-                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M5 21V5l7-3 7 3v16M9 9h2m-2 4h2m2-4h2m-2 4h2" /></svg>
-                    <span x-show="sidebarOpen" x-transition>Ajukan Peminjaman</span>
+                <a href="{{ route('guru.events') }}" @click="if (isMobile) sidebarOpen = false" class="nav-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm {{ request()->routeIs('guru.events') || request()->routeIs('events.create') ? 'nav-active' : '' }}" title="Manajemen Agenda">
+                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>
+                    <span x-show="sidebarOpen" x-transition>Manajemen Agenda</span>
                 </a>
                 <a href="{{ route('guru.events.history') }}" @click="if (isMobile) sidebarOpen = false" class="nav-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm {{ request()->routeIs('guru.events.history') ? 'nav-active' : '' }}" title="Riwayat & Status">
-                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>
+                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                     <span x-show="sidebarOpen" x-transition>Riwayat &amp; Status</span>
                 </a>
-                <a href="{{ route('guru.complaints.create') }}" @click="if (isMobile) sidebarOpen = false" class="nav-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm {{ request()->routeIs('guru.complaints.create') ? 'nav-active' : '' }}" title="Buat Laporan Baru">
+                <a href="{{ route('guru.complaints') }}" @click="if (isMobile) sidebarOpen = false" class="nav-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm {{ request()->routeIs('guru.complaints') || request()->routeIs('guru.complaints.create') ? 'nav-active' : '' }}" title="Manajemen Kerusakan">
                     <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.3 3.8L2.7 17a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.8a2 2 0 00-3.4 0z" /></svg>
-                    <span x-show="sidebarOpen" x-transition>Buat Laporan Baru</span>
+                    <span x-show="sidebarOpen" x-transition>Manajemen Kerusakan</span>
                 </a>
                 <a href="{{ route('guru.complaints.status') }}" @click="if (isMobile) sidebarOpen = false" class="nav-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm {{ request()->routeIs('guru.complaints.status') ? 'nav-active' : '' }}" title="Riwayat Pengaduan Saya">
                     <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4m10-10h-4M6 12H2m17.07-7.07l-2.83 2.83M7.76 16.24l-2.83 2.83m14.14 0l-2.83-2.83M7.76 7.76L4.93 4.93" /></svg>

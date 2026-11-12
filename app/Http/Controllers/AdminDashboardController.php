@@ -17,6 +17,7 @@ class AdminDashboardController extends Controller
             'active_rooms' => Room::where('is_active', 'Aktif')->count(),
             'events' => Event::count(),
             'pending_events' => Event::where('status', 'pending')->count(),
+            'pending_cancellations' => Event::where('cancellation_status', 'pending')->count(),
             'complaints' => Complaint::count(),
             'open_complaints' => Complaint::where('status_repair', '!=', 'Sudah Diperbaiki')->count(),
         ];

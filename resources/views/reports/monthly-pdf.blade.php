@@ -42,7 +42,12 @@
             @forelse ($events as $event)
                 <tr>
                     <td><x-event-date-range :start-date="$event->date" :end-date="$event->end_date" /></td>
-                    <td>{{ $event->event_name }}</td>
+                    <td>
+                        {{ $event->event_name }}
+                        @if ($event->created_at)
+                            <br><span style="font-size: 8px; color: #78716c;">Dibuat: {{ $event->created_at->format('d/m/Y H:i') }}</span>
+                        @endif
+                    </td>
                     <td>{{ $event->room_names ?: '-' }}</td>
                     <td>
                         @if ($event->pic)
@@ -57,7 +62,26 @@
                             -
                         @endif
                     </td>
-                    <td>{{ substr($event->start_time, 0, 5) }} - {{ substr($event->end_time, 0, 5) }}</td>
+                    <td>
+                        @php
+                            $startFormatted = date('H:i', strtotime($event->start_time));
+                            $endFormatted = date('H:i', strtotime($event->end_time));
+                            $sessionList = collect(config('schedule.sessions'));
+                            $startSessionIndex = $sessionList->search(fn ($t) => $t['start_time'] === $startFormatted);
+                            $endSessionIndex = $sessionList->search(fn ($t) => $t['end_time'] === $endFormatted);
+
+                            if ($startSessionIndex === false) {
+                                $startSessionIndex = $sessionList->keys()->first(fn ($k) => $sessionList[$k]['end_time'] > $startFormatted);
+                            }
+                            if ($endSessionIndex === false) {
+                                $endSessionIndex = $sessionList->keys()->last(fn ($k) => $sessionList[$k]['start_time'] < $endFormatted);
+                            }
+                        @endphp
+                        @if ($startSessionIndex !== false && $endSessionIndex !== false && $startSessionIndex !== null && $endSessionIndex !== null)
+                            <strong>Sesi {{ $startSessionIndex }}{{ $startSessionIndex !== $endSessionIndex ? ' - Sesi ' . $endSessionIndex : '' }}</strong><br>
+                        @endif
+                        {{ substr($event->start_time, 0, 5) }} - {{ substr($event->end_time, 0, 5) }}
+                    </td>
                     <td>{{ $event->lifecycle_status_label }}</td>
                 </tr>
             @empty

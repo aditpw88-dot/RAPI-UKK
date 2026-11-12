@@ -333,9 +333,9 @@ class _DashboardTabState extends State<DashboardTab> {
         : buildBtn(
             icon: Icons.add_circle_outline,
             label: 'Ajukan Agenda',
-            color: const Color(0xFF09090B),
-            bgColor: const Color(0xFFF4F4F5),
-            borderColor: const Color(0xFFE4E4E7),
+            color: AppTheme.brandAmber,
+            bgColor: AppTheme.brandAmberLight,
+            borderColor: const Color(0xFFFED7AA),
             onTap: widget.onOpenCreateEvent,
           );
 

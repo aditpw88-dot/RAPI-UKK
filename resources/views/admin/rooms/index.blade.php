@@ -39,12 +39,17 @@
                 </button>
             </div>
 
-            <form method="GET" action="{{ route('admin.rooms') }}" class="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_12rem_auto_auto]">
+            <form method="GET" action="{{ route('admin.rooms') }}" class="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_11rem_11rem_auto_auto]">
                 <input type="search" name="search" value="{{ request('search') }}" placeholder="Cari nama ruang atau PIC" aria-label="Cari nama ruang atau PIC" class="rounded-md border-gray-300 text-sm">
-                <select name="active" aria-label="Filter status ruang" class="rounded-md border-gray-300 text-sm">
+                <select name="condition" aria-label="Filter kondisi ruang" class="rounded-md border-gray-300 text-sm">
+                    <option value="">Semua kondisi</option>
+                    <option value="active" @selected(request('condition', request('active')) === 'active')>Kondisi: Aktif</option>
+                    <option value="inactive" @selected(request('condition', request('active')) === 'inactive')>Kondisi: Tidak aktif</option>
+                </select>
+                <select name="status" aria-label="Filter status ruang" class="rounded-md border-gray-300 text-sm">
                     <option value="">Semua status</option>
-                    <option value="active" @selected(request('active') === 'active')>Aktif</option>
-                    <option value="inactive" @selected(request('active') === 'inactive')>Tidak aktif</option>
+                    <option value="available" @selected(request('status') === 'available')>Status: Tersedia</option>
+                    <option value="unavailable" @selected(request('status') === 'unavailable')>Status: Tidak tersedia</option>
                 </select>
                 <button type="submit" class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Cari / Filter</button>
                 <a href="{{ route('admin.rooms') }}" class="rounded-md border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-gray-50">Reset</a>
@@ -64,28 +69,52 @@
                                 <tr>
                                     <td class="px-6 py-4">
                                         <div class="space-y-2">
-                                            <p class="text-base font-semibold text-slate-900">{{ $room->room_name }}</p>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <p class="text-base font-semibold text-slate-900">{{ $room->room_name }}</p>
+                                                @if ($room->is_active)
+                                                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                                        Kondisi: Aktif
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+                                                        Kondisi: Tidak aktif
+                                                    </span>
+                                                @endif
+                                                @if ($room->is_available)
+                                                    <span class="inline-flex items-center gap-1 rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-xs font-semibold text-teal-800">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-teal-500"></span>
+                                                        Status: Tersedia
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-200 px-2 py-0.5 text-xs font-semibold text-rose-800">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                                        Status: Tidak tersedia
+                                                    </span>
+                                                @endif
+                                            </div>
                                             <details class="group">
                                                 <summary class="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-500 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 [&::-webkit-details-marker]:hidden">
                                                     <span class="text-base text-slate-500 transition group-open:rotate-90" aria-hidden="true">▸</span>
                                                     <span>Lihat Identitas Ruangan</span>
                                                 </summary>
                                                 <div class="mt-3 space-y-2.5 rounded-lg bg-slate-50 p-4 text-base text-slate-700">
-                                                    <p>Kuantitas: {{ $room->capacity }} orang</p>
-                                                    <div>
-                                                        <p class="font-medium text-slate-800 mb-1">Penanggung jawab: {{ $room->all_pics->pluck('fullname')->join(', ') ?: 'Belum ditentukan' }}</p>
-                                                        @if ($room->all_pics->isNotEmpty())
-                                                            <ul class="space-y-1.5 pl-2.5 border-l-2 border-slate-300 mt-1">
-                                                                @foreach ($room->all_pics as $pic)
-                                                                    <li class="text-sm">
-                                                                        <span class="font-semibold text-slate-900">• {{ $pic->fullname }}</span>
-                                                                        <span class="text-xs text-slate-500 block ml-2">WhatsApp: {{ $pic->phone_number ?: 'Belum diisi' }} &bull; {{ $pic->email }}</span>
-                                                                    </li>
-                                                                @endforeach
-                                                            </ul>
-                                                        @endif
-                                                    </div>
-                                                    <p>Status: {{ $room->is_active ? 'Aktif' : 'Tidak aktif' }}</p>
+                                                    <p class="font-medium text-slate-800">Kuantitas: {{ $room->capacity }} orang</p>
+                                                    @if ($room->all_pics->isNotEmpty())
+                                                        @foreach ($room->all_pics as $pic)
+                                                            <div class="space-y-1.5 {{ !$loop->first ? 'pt-2.5 border-t border-slate-200' : '' }}">
+                                                                <p class="font-medium text-slate-800">Penanggung jawab : {{ $pic->fullname }}</p>
+                                                                <div class="space-y-1 pl-2.5 border-l-2 border-slate-300">
+                                                                    <p class="font-semibold text-slate-900 text-sm">Data Diri</p>
+                                                                    <p class="text-sm text-slate-600">Nomor whatsapp: {{ $pic->phone_number ?: 'Belum diisi' }}</p>
+                                                                    <p class="text-sm text-slate-600">gmail: {{ $pic->email }}</p>
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    @else
+                                                        <p class="font-medium text-slate-800">Penanggung jawab : Belum ditentukan</p>
+                                                    @endif
                                                 </div>
                                             </details>
                                         </div>

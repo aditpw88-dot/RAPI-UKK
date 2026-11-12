@@ -15,11 +15,13 @@ class Complaint extends Model
         'status_repair',
         'handler_id',
         'reported_at',
+        'repaired_at',
         'is_escalated',
     ];
 
     protected $casts = [
         'reported_at' => 'datetime',
+        'repaired_at' => 'datetime',
         'is_escalated' => 'boolean',
     ];
 

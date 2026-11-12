@@ -46,19 +46,70 @@
                     <label for="description" class="block text-sm font-semibold text-slate-700">Deskripsi Kerusakan</label>
                     <textarea id="description" name="description" rows="5" required class="mt-2 w-full rounded-md border-gray-300 text-sm" placeholder="Jelaskan kerusakan yang ditemukan...">{{ old('description') }}</textarea>
                 </div>
-                <div>
-                    <label for="photo" class="block text-sm font-semibold text-slate-700">Foto Kerusakan</label>
-                    <input id="photo" name="photo" type="file" accept="image/*" required class="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-                    <p class="mt-1 text-xs text-slate-500">Pilih file gambar atau ambil foto langsung. Maksimal 5 MB.</p>
-                    <div class="mt-3 flex flex-wrap gap-2">
-                        <button id="start-camera" type="button" class="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Buka Kamera</button>
-                        <button id="capture-photo" type="button" class="hidden rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Ambil Foto</button>
-                        <button id="close-camera" type="button" class="hidden rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Tutup Kamera</button>
-                        <button id="retake-photo" type="button" class="hidden rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Ambil Ulang</button>
+                <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                    <label class="block text-sm font-bold text-slate-800">
+                        Foto Bukti Kerusakan <span class="text-red-500">*</span>
+                    </label>
+                    <p class="mt-1 text-xs text-slate-500">Ambil foto kerusakan langsung menggunakan kamera HP atau unggah dari galeri/file (maksimal 5 MB).</p>
+
+                    <!-- Input tersembunyi yang menyimpan file asli untuk dikirim ke backend -->
+                    <input id="photo" name="photo" type="file" accept="image/*" required class="hidden">
+                    
+                    <!-- Input pemicu kamera HP asli (capture="environment") -->
+                    <input id="camera-capture-input" type="file" accept="image/*" capture="environment" class="hidden">
+                    
+                    <!-- Input pemicu galeri / file picker -->
+                    <input id="gallery-picker-input" type="file" accept="image/*" class="hidden">
+
+                    <!-- Tombol Opsi Mobile Friendly -->
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <button type="button" id="btn-camera-hp" class="flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 active:scale-[0.98] transition">
+                            <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span>Ambil Foto via Kamera HP</span>
+                        </button>
+
+                        <button type="button" id="btn-gallery" class="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition">
+                            <svg class="h-5 w-5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>Pilih dari Galeri / File</span>
+                        </button>
+
+                        <!-- Tombol Webcam Laptop / PC Berukuran Setara 2 Tombol Di Atasnya (Span 2 Kolom) & Warna Oranye -->
+                        <button type="button" id="start-camera" class="sm:col-span-2 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 active:scale-[0.98] transition">
+                            <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            <span>Gunakan Webcam Laptop / PC</span>
+                        </button>
                     </div>
-                    <p id="camera-message" class="mt-2 text-sm text-slate-600" role="status" aria-live="polite"></p>
-                    <video id="camera-preview" class="mt-3 hidden max-h-96 w-full rounded-lg bg-black object-contain" autoplay muted playsinline style="transform: none;"></video>
-                    <img id="photo-preview" class="mt-3 hidden max-h-96 rounded-lg border border-gray-200 object-contain" alt="Pratinjau foto kerusakan">
+
+                    <!-- Kontrol Webcam Saat Aktif -->
+                    <div id="webcam-controls" class="mt-2.5 hidden flex-wrap gap-2">
+                        <button id="capture-photo" type="button" class="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-700 active:scale-[0.98] transition">Jepret Webcam</button>
+                        <button id="close-camera" type="button" class="rounded-xl border border-red-300 bg-white px-4 py-2.5 text-xs font-semibold text-red-700 shadow-sm hover:bg-red-50 active:scale-[0.98] transition">Tutup Webcam</button>
+                    </div>
+
+                    <p id="camera-message" class="mt-2 text-xs font-medium text-slate-600" role="status" aria-live="polite"></p>
+                    <video id="camera-preview" class="mt-3 hidden max-h-80 w-full rounded-xl bg-black object-contain" autoplay muted playsinline></video>
+
+                    <!-- Pratinjau Foto Yang Dipilih -->
+                    <div id="photo-preview-container" class="mt-3 hidden rounded-xl border border-emerald-200 bg-white p-3 shadow-xs">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                                <svg class="h-4 w-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                Foto Berhasil Dipilih
+                            </span>
+                            <button type="button" id="remove-photo-btn" class="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline">
+                                Hapus / Ganti Foto
+                            </button>
+                        </div>
+                        <img id="photo-preview" class="max-h-80 w-full rounded-lg object-contain bg-slate-100" alt="Pratinjau foto kerusakan">
+                        <p id="photo-filename" class="mt-1.5 text-center text-xs text-slate-500 font-mono truncate"></p>
+                    </div>
                 </div>
                 <div class="flex justify-end gap-3 border-t border-gray-200 pt-5">
                     <a href="{{ $isAdmin ? route('admin.complaints') : route('guru.dashboard') }}" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</a>
@@ -90,21 +141,64 @@
         complaintForm?.addEventListener('submit', syncRoomId);
 
         const photoInput = document.getElementById('photo');
-        const cameraPreview = document.getElementById('camera-preview');
+        const cameraCaptureInput = document.getElementById('camera-capture-input');
+        const galleryPickerInput = document.getElementById('gallery-picker-input');
+        const btnCameraHp = document.getElementById('btn-camera-hp');
+        const btnGallery = document.getElementById('btn-gallery');
+        const photoPreviewContainer = document.getElementById('photo-preview-container');
         const photoPreview = document.getElementById('photo-preview');
+        const photoFilename = document.getElementById('photo-filename');
+        const removePhotoBtn = document.getElementById('remove-photo-btn');
+        const cameraPreview = document.getElementById('camera-preview');
         const cameraMessage = document.getElementById('camera-message');
         const startCameraButton = document.getElementById('start-camera');
+        const webcamControls = document.getElementById('webcam-controls');
         const capturePhotoButton = document.getElementById('capture-photo');
         const closeCameraButton = document.getElementById('close-camera');
-        const retakePhotoButton = document.getElementById('retake-photo');
         let cameraStream = null;
         let previewUrl = null;
+
+        // Buka Kamera HP langsung via capture="environment"
+        btnCameraHp?.addEventListener('click', () => {
+            stopCamera();
+            cameraCaptureInput?.click();
+        });
+
+        // Buka Galeri HP / File Picker
+        btnGallery?.addEventListener('click', () => {
+            stopCamera();
+            galleryPickerInput?.click();
+        });
+
+        cameraCaptureInput?.addEventListener('change', () => {
+            const file = cameraCaptureInput.files?.[0];
+            if (file) {
+                useSelectedPhoto(file);
+            }
+        });
+
+        galleryPickerInput?.addEventListener('change', () => {
+            const file = galleryPickerInput.files?.[0];
+            if (file) {
+                useSelectedPhoto(file);
+            }
+        });
+
+        removePhotoBtn?.addEventListener('click', () => {
+            photoInput.value = '';
+            if (cameraCaptureInput) cameraCaptureInput.value = '';
+            if (galleryPickerInput) galleryPickerInput.value = '';
+            photoPreviewContainer?.classList.add('hidden');
+            if (photoFilename) photoFilename.textContent = '';
+            if (cameraMessage) cameraMessage.textContent = '';
+        });
 
         function stopCamera() {
             cameraStream?.getTracks().forEach((track) => track.stop());
             cameraStream = null;
             cameraPreview.srcObject = null;
             cameraPreview.classList.add('hidden');
+            webcamControls?.classList.add('hidden');
             capturePhotoButton.classList.add('hidden');
             closeCameraButton.classList.add('hidden');
             startCameraButton.classList.remove('hidden');
@@ -120,7 +214,7 @@
             photoInput.files = transfer.files;
             photoInput.dispatchEvent(new Event('change', { bubbles: true }));
             showPhoto(file);
-            cameraMessage.textContent = 'Foto siap dikirim bersama laporan.';
+            cameraMessage.textContent = '✓ Foto siap dikirim bersama laporan.';
         }
 
         function showPhoto(file) {
@@ -130,15 +224,18 @@
 
             previewUrl = URL.createObjectURL(file);
             photoPreview.src = previewUrl;
-            photoPreview.classList.remove('hidden');
-            retakePhotoButton.classList.remove('hidden');
+            photoPreviewContainer?.classList.remove('hidden');
+            if (photoFilename) {
+                const sizeKb = (file.size / 1024).toFixed(1);
+                photoFilename.textContent = `${file.name || 'foto-kerusakan.jpg'} (${sizeKb} KB)`;
+            }
         }
 
-        startCameraButton.addEventListener('click', async () => {
+        startCameraButton?.addEventListener('click', async () => {
             if (!navigator.mediaDevices?.getUserMedia) {
                 cameraMessage.textContent = window.isSecureContext
-                    ? 'Browser ini tidak mendukung akses kamera langsung. Silakan upload file gambar.'
-                    : 'Akses kamera langsung memerlukan HTTPS. Silakan upload file gambar.';
+                    ? 'Browser ini tidak mendukung akses webcam langsung. Silakan gunakan opsi Kamera HP atau Galeri.'
+                    : 'Akses webcam memerlukan HTTPS. Silakan gunakan tombol Kamera HP di atas.';
                 return;
             }
 
@@ -161,33 +258,31 @@
                 }
                 cameraPreview.srcObject = cameraStream;
                 cameraPreview.classList.remove('hidden');
+                webcamControls?.classList.remove('hidden');
                 capturePhotoButton.classList.remove('hidden');
                 closeCameraButton.classList.remove('hidden');
                 startCameraButton.classList.add('hidden');
-                photoPreview.classList.add('hidden');
-                retakePhotoButton.classList.add('hidden');
+                photoPreviewContainer?.classList.add('hidden');
                 const facingMode = cameraStream.getVideoTracks()[0]?.getSettings().facingMode;
                 cameraMessage.textContent = facingMode === 'user'
-                    ? 'Kamera depan aktif tanpa efek cermin. Arahkan ke kerusakan, lalu ambil foto.'
-                    : 'Kamera belakang aktif. Arahkan ke kerusakan, lalu ambil foto.';
+                    ? 'Webcam depan aktif. Arahkan ke kerusakan, lalu klik Jepret.'
+                    : 'Kamera belakang aktif. Arahkan ke kerusakan, lalu klik Jepret.';
             } catch (error) {
                 cameraStream?.getTracks().forEach((track) => track.stop());
                 cameraStream = null;
                 const messages = {
-                    NotAllowedError: 'Izin kamera ditolak. Izinkan akses kamera di pengaturan browser atau upload file gambar.',
-                    NotFoundError: 'Kamera tidak ditemukan. Silakan upload file gambar.',
-                    NotReadableError: 'Kamera sedang digunakan aplikasi lain. Tutup aplikasi tersebut atau upload file gambar.',
-                    OverconstrainedError: 'Kamera belakang tidak tersedia. Silakan upload file gambar.',
-                    SecurityError: 'Browser memblokir akses kamera. Buka situs melalui HTTPS atau upload file gambar.',
+                    NotAllowedError: 'Izin webcam ditolak. Gunakan tombol "Ambil Foto via Kamera HP" di atas.',
+                    NotFoundError: 'Webcam tidak ditemukan. Gunakan tombol "Ambil Foto via Kamera HP" di atas.',
+                    NotReadableError: 'Webcam sedang digunakan aplikasi lain.',
+                    OverconstrainedError: 'Kamera belakang tidak tersedia.',
+                    SecurityError: 'Browser memblokir akses kamera langsung. Silakan gunakan tombol Kamera HP.',
                 };
                 cameraMessage.textContent = messages[error.name]
-                    ?? (!window.isSecureContext
-                        ? 'Akses kamera langsung memerlukan HTTPS. Silakan upload file gambar.'
-                        : 'Kamera tidak dapat dibuka. Periksa izin browser atau upload file gambar.');
+                    ?? 'Webcam tidak dapat dibuka. Silakan gunakan tombol Kamera HP di atas.';
             }
         });
 
-        capturePhotoButton.addEventListener('click', () => {
+        capturePhotoButton?.addEventListener('click', () => {
             if (!cameraPreview.videoWidth || !cameraPreview.videoHeight) {
                 cameraMessage.textContent = 'Kamera belum siap. Coba lagi sebentar.';
                 return;
@@ -200,14 +295,14 @@
             canvas.height = Math.round(cameraPreview.videoHeight * scale);
             const context = canvas.getContext('2d');
             if (!context) {
-                cameraMessage.textContent = 'Foto gagal diproses. Silakan gunakan upload file.';
+                cameraMessage.textContent = 'Foto gagal diproses.';
                 return;
             }
 
             context.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
             canvas.toBlob((blob) => {
                 if (!blob) {
-                    cameraMessage.textContent = 'Foto gagal diproses. Silakan coba lagi.';
+                    cameraMessage.textContent = 'Foto gagal diproses.';
                     return;
                 }
 
@@ -217,24 +312,15 @@
             }, 'image/jpeg', 0.85);
         });
 
-        photoInput.addEventListener('change', () => {
+        photoInput?.addEventListener('change', () => {
             const [file] = photoInput.files;
             if (file) {
                 showPhoto(file);
-                retakePhotoButton.classList.remove('hidden');
-                cameraMessage.textContent = 'Foto siap dikirim bersama laporan.';
+                cameraMessage.textContent = '✓ Foto siap dikirim bersama laporan.';
             }
         });
 
-        retakePhotoButton.addEventListener('click', () => {
-            photoInput.value = '';
-            photoPreview.classList.add('hidden');
-            retakePhotoButton.classList.add('hidden');
-            cameraMessage.textContent = '';
-            photoInput.click();
-        });
-
-        closeCameraButton.addEventListener('click', () => {
+        closeCameraButton?.addEventListener('click', () => {
             stopCamera();
             cameraMessage.textContent = 'Kamera sudah ditutup.';
         });

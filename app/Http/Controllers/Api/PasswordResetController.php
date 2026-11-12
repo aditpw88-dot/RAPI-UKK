@@ -46,7 +46,17 @@ class PasswordResetController extends Controller
                 'otp_last_sent_at' => $now,
             ])->save();
 
-            Mail::to($user->email)->send(new SendOtpMail($otp, $user->fullname));
+            try {
+                Mail::to($user->email)->send(new SendOtpMail($otp, $user->fullname));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Gagal mengirim email OTP API: '.$e->getMessage(), [
+                    'exception' => $e,
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                ]);
+
+                return ['user' => $user, 'remaining' => 0, 'mail_error' => $e->getMessage()];
+            }
 
             return ['user' => $user, 'remaining' => 0];
         });
@@ -58,9 +68,16 @@ class PasswordResetController extends Controller
             ], 429);
         }
 
+        if (! empty($result['mail_error'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim email OTP: ' . $result['mail_error'],
+            ], 500);
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Kode OTP telah dikirim ke email Anda.',
+            'message' => 'Kode OTP telah dikirim ke email Anda. (Periksa juga folder SPAM).',
         ]);
     }
 

@@ -266,20 +266,30 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.scaffoldBg,
       appBar: AppBar(
-        title: const Text('Masuk'),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: AppTheme.headerGradient,
+            border: Border(
+              bottom: BorderSide(color: AppTheme.headerBorder, width: 2),
+            ),
+          ),
+        ),
+        iconTheme: IconThemeData(color: AppTheme.brandGold),
+        title: Text(
+          'Masuk Aplikasi',
+          style: TextStyle(
+            color: AppTheme.brandGold,
+            fontSize: 16.5,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         leading: IconButton(
           onPressed: widget.onBackToCalendar,
           tooltip: 'Kembali ke kalender',
           icon: const Icon(Icons.arrow_back),
         ),
-        actions: [
-          IconButton(
-            onPressed: _openServerConfigDialog,
-            tooltip: 'Pengaturan server API',
-            icon: const Icon(Icons.settings_outlined),
-          ),
-        ],
       ),
       body: SafeArea(
         child: Center(
@@ -292,28 +302,41 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Brand Icon & Header
+                    // Brand Icon & Header (Ikon roda gigi API disembunyikan, dapat diakses via long-press logo)
                     Center(
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor,
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primaryColor.withValues(
-                                alpha: 0.3,
-                              ),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
+                      child: GestureDetector(
+                        onLongPress: _openServerConfigDialog,
+                        child: Container(
+                          width: 82,
+                          height: 82,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: const Color(0xFFFED7AA),
+                              width: 1.5,
                             ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.school,
-                          size: 42,
-                          color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.brandAmber.withValues(alpha: 0.22),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(9),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.school_rounded,
+                                size: 42,
+                                color: AppTheme.brandAmber,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),

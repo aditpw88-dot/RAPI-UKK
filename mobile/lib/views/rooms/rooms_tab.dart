@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/api_client.dart';
+import '../../core/url_opener.dart';
 import '../../models/room_model.dart';
 import '../../models/user_model.dart';
 import '../../theme/app_theme.dart';
@@ -104,7 +106,235 @@ class _RoomsTabState extends State<RoomsTab> {
         .toList();
   }
 
+  Future<void> _showUpdateRoomStatusDialog(RoomModel room) async {
+    bool isActive = room.isActive;
+    final noteController = TextEditingController(
+      text: room.maintenanceNote ?? '',
+    );
+    bool isSaving = false;
+    String? errorText;
+    String? conflictWaUrl;
+    String? conflictBorrowerName;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'MANAJEMEN RUANG PIC',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                  color: Color(0xFFB45309),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Ubah Status ${room.roomName}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<bool>(
+                  initialValue: isActive,
+                  decoration: const InputDecoration(
+                    labelText: 'Kondisi Ruangan',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: true,
+                      child: Text('Aktif (Siap Digunakan)'),
+                    ),
+                    DropdownMenuItem(
+                      value: false,
+                      child: Text('Tidak Aktif (Dalam Perbaikan)'),
+                    ),
+                  ],
+                  onChanged: (val) {
+                    if (val == null) return;
+                    setDialogState(() {
+                      isActive = val;
+                      errorText = null;
+                    });
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: noteController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: isActive
+                        ? 'Catatan Ruangan (Opsional)'
+                        : 'Catatan Perbaikan / Alasan *',
+                    hintText:
+                        'Contoh: Sedang renovasi plafon dan pengecatan sampai tanggal 20.',
+                    errorText: errorText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Catatan ini akan muncul beserta link WhatsApp Anda saat ruangan dipilih pada form peminjaman.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                ),
+                if (conflictWaUrl != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          errorText ?? 'Ruangan sedang digunakan untuk agenda.',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF991B1B),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final opened = UrlOpener.open(conflictWaUrl!);
+                            if (!opened) {
+                              await Clipboard.setData(
+                                ClipboardData(text: conflictWaUrl!),
+                              );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Link WhatsApp telah disalin ke clipboard.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.chat, size: 16),
+                          label: Text(
+                            conflictBorrowerName != null
+                                ? 'Hubungi $conflictBorrowerName via WhatsApp'
+                                : 'Hubungi Peminjam via WhatsApp',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            textStyle: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final note = noteController.text.trim();
+                      if (!isActive && note.isEmpty) {
+                        setDialogState(() {
+                          errorText =
+                              'Mohon isi catatan perbaikan saat menonaktifkan ruangan.';
+                        });
+                        return;
+                      }
+
+                      setDialogState(() {
+                        isSaving = true;
+                        errorText = null;
+                        conflictWaUrl = null;
+                        conflictBorrowerName = null;
+                      });
+
+                      try {
+                        await widget.api.patch(
+                          '/rooms/${room.id}/status',
+                          {
+                            'is_active': isActive,
+                            'maintenance_note': isActive ? null : note,
+                          },
+                        );
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        _refresh();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Status ${room.roomName} berhasil diperbarui.',
+                              ),
+                            ),
+                          );
+                        }
+                      } on ApiException catch (e) {
+                        String? waUrl;
+                        String? borrower;
+                        if (e.data is Map) {
+                          waUrl = e.data['whatsapp_url']?.toString();
+                          if (e.data['ongoing_conflict'] is Map) {
+                            final conf = e.data['ongoing_conflict'] as Map;
+                            waUrl ??= conf['whatsapp_url']?.toString();
+                            borrower = conf['borrower_name']?.toString();
+                          }
+                        }
+                        setDialogState(() {
+                          isSaving = false;
+                          errorText = waUrl != null ? null : e.message;
+                          conflictWaUrl = waUrl;
+                          conflictBorrowerName = borrower;
+                        });
+                      } catch (e) {
+                        setDialogState(() {
+                          isSaving = false;
+                          errorText = 'Gagal menyimpan: $e';
+                        });
+                      }
+                    },
+              child: Text(isSaving ? 'Menyimpan...' : 'Simpan Status'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showRoomDetailSheet(RoomModel room) {
+    final isMyManagedRoom = widget.user.isPic && room.picId == widget.user.id;
+    final waUrl = room.picWhatsappUrl;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -114,105 +344,208 @@ class _RoomsTabState extends State<RoomsTab> {
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: room.isActive
+                            ? AppTheme.primaryColor.withValues(alpha: 0.12)
+                            : const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        room.isActive
+                            ? Icons.meeting_room
+                            : Icons.construction_rounded,
+                        color: room.isActive
+                            ? AppTheme.primaryColor
+                            : const Color(0xFFB45309),
+                        size: 28,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.meeting_room,
-                      color: AppTheme.primaryColor,
-                      size: 28,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            room.roomName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: room.isActive
+                                  ? const Color(0xFF10B981)
+                                      .withValues(alpha: 0.12)
+                                  : const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              room.isActive
+                                  ? 'Status: Aktif (Siap Digunakan)'
+                                  : 'Status: Tidak Aktif (Dalam Perbaikan)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: room.isActive
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFFB45309),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  icon: Icons.people_outline,
+                  title: 'Kapasitas Ruangan',
+                  value: '${room.capacity} Orang',
+                ),
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  icon: Icons.person_pin_outlined,
+                  title: 'Penanggung Jawab (PIC)',
+                  value: room.picName ?? 'Belum Ditentukan',
+                ),
+                if (room.picPhone != null && room.picPhone!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    icon: Icons.phone_outlined,
+                    title: 'Nomor WhatsApp PIC',
+                    value: room.picPhone!,
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
+                ],
+                const SizedBox(height: 12),
+                _buildDetailRow(
+                  icon: Icons.verified_user_outlined,
+                  title: 'Status Anda',
+                  value: isMyManagedRoom
+                      ? 'Anda adalah PIC ruangan ini'
+                      : 'Pengguna Terdaftar',
+                ),
+                if (!room.isActive) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          room.roomName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
+                        const Text(
+                          'Ruangan sedang dalam perbaikan, mohon lihat catatan ini dan hubungi nomor di bawah ini:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF92400E),
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
+                        const SizedBox(height: 8),
+                        Text(
+                          (room.maintenanceNote != null &&
+                                  room.maintenanceNote!.trim().isNotEmpty)
+                              ? 'Catatan PIC: ${room.maintenanceNote}'
+                              : 'Catatan PIC: Ruangan sedang dalam perbaikan / renovasi.',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1E293B),
                           ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF10B981,
-                            ).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Status: Siap Digunakan',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF10B981),
-                              fontWeight: FontWeight.w600,
+                        ),
+                        if (waUrl != null) ...[
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF059669),
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () async {
+                                final opened = openExternalUrl(waUrl);
+                                if (!opened) {
+                                  await Clipboard.setData(
+                                    ClipboardData(text: waUrl),
+                                  );
+                                  if (ctx.mounted) {
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Link WhatsApp PIC telah disalin.',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.chat_outlined, size: 18),
+                              label: const Text('Hubungi PIC via WhatsApp'),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 20),
-              const Divider(),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                icon: Icons.people_outline,
-                title: 'Kapasitas Ruangan',
-                value: '${room.capacity} Orang',
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                icon: Icons.person_pin_outlined,
-                title: 'Penanggung Jawab (PIC)',
-                value: room.picName ?? 'Belum Ditentukan',
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                icon: Icons.verified_user_outlined,
-                title: 'Status Anda',
-                value: (widget.user.isPic && room.picId == widget.user.id)
-                    ? 'Anda adalah PIC ruangan ini'
-                    : 'Pengguna Terdaftar',
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Tutup Detail'),
+                const SizedBox(height: 20),
+                if (isMyManagedRoom) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showUpdateRoomStatusDialog(room);
+                      },
+                      icon: const Icon(Icons.settings_outlined, size: 18),
+                      label: const Text('Ubah Status Kondisi Ruangan'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Tutup Detail'),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -291,6 +624,8 @@ class _RoomsTabState extends State<RoomsTab> {
               children: [
                 'Semua Ruangan',
                 if (widget.user.isPic) 'Ruangan Saya',
+                'Laboratorium (Lab)',
+                'Ruang Kelas',
                 'Belum Ada PIC',
               ].map((filter) {
                 final selected = _roomFilter == filter;
@@ -364,6 +699,16 @@ class _RoomsTabState extends State<RoomsTab> {
                     }
                     if (_roomFilter == 'Ruangan Saya' &&
                         (!widget.user.isPic || r.picId != widget.user.id)) {
+                      return false;
+                    }
+                    if (_roomFilter == 'Laboratorium (Lab)' &&
+                        !r.roomName.toLowerCase().contains('lab')) {
+                      return false;
+                    }
+                    if (_roomFilter == 'Ruang Kelas' &&
+                        !(r.roomName.toLowerCase().contains('kelas') ||
+                            RegExp(r'ruang\s*\d+', caseSensitive: false)
+                                .hasMatch(r.roomName))) {
                       return false;
                     }
                     if (_roomFilter == 'Belum Ada PIC' && r.picId != null) {
@@ -472,6 +817,35 @@ class _RoomsTabState extends State<RoomsTab> {
                                               ),
                                             ),
                                           ),
+                                          if (!room.isActive)
+                                            Container(
+                                              margin: const EdgeInsets.only(
+                                                right: 6,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFFEF3C7),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                border: Border.all(
+                                                  color: const Color(
+                                                    0xFFFDE68A,
+                                                  ),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'PERBAIKAN',
+                                                style: TextStyle(
+                                                  color: Color(0xFF92400E),
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
                                           if (isMyManagedRoom)
                                             Container(
                                               padding:

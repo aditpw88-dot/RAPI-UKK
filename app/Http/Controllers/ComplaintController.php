@@ -15,15 +15,38 @@ class ComplaintController extends Controller
         $this->ensurePic();
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', 'in:Belum Diperbaiki,Menunggu Spare Part,Sudah Diperbaiki'],
+            'status' => ['nullable', 'in:Belum Diperbaiki,Sedang Diperbaiki,Menunggu Spare Part,Sudah Diperbaiki'],
         ]);
         $search = trim($filters['search'] ?? '');
         $picId = auth()->id();
-        $complaints = Complaint::with(['room', 'reporter.role'])
-            ->where(function ($query) use ($picId) {
-                $query->whereHas('room', fn ($query) => $query->where('pic_id', $picId))
+        $threshold = now()->subHours(24);
+
+        $visibleQuery = function ($query) use ($threshold) {
+            $query->where(function ($q) use ($threshold) {
+                $q->where('status_repair', '!=', 'Sudah Diperbaiki')
+                    ->orWhere(function ($sub) use ($threshold) {
+                        $sub->where('status_repair', 'Sudah Diperbaiki')
+                            ->where(function ($timeQ) use ($threshold) {
+                                $timeQ->where('repaired_at', '>=', $threshold)
+                                    ->orWhere(function ($fallbackQ) use ($threshold) {
+                                        $fallbackQ->whereNull('repaired_at')
+                                            ->where('updated_at', '>=', $threshold);
+                                    });
+                            });
+                    });
+            });
+        };
+
+        $picScope = function ($query) use ($picId) {
+            $query->where(function ($q) use ($picId) {
+                $q->whereHas('room', fn ($roomQ) => $roomQ->where('pic_id', $picId))
                     ->orWhere('handler_id', $picId);
-            })
+            });
+        };
+
+        $complaints = Complaint::with(['room', 'reporter.role'])
+            ->where($picScope)
+            ->where($visibleQuery)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('description', 'like', "%{$search}%")
@@ -41,28 +64,19 @@ class ComplaintController extends Controller
             ->withQueryString();
 
         $statistics = [
-            'total' => Complaint::whereHas('room', fn ($query) => $query->where('pic_id', $picId))
-                ->orWhere('handler_id', $picId)->count(),
-            'not_repaired' => Complaint::where(function ($query) use ($picId) {
-                $query->whereHas('room', fn ($query) => $query->where('pic_id', $picId))
-                    ->orWhere('handler_id', $picId);
-            })
-                ->where('status_repair', 'Belum Diperbaiki')->count(),
-            'in_repair' => Complaint::where(function ($query) use ($picId) {
-                $query->whereHas('room', fn ($query) => $query->where('pic_id', $picId))
-                    ->orWhere('handler_id', $picId);
-            })
-                ->where('status_repair', 'Sedang Diperbaiki')->count(),
-            'waiting_parts' => Complaint::where(function ($query) use ($picId) {
-                $query->whereHas('room', fn ($query) => $query->where('pic_id', $picId))
-                    ->orWhere('handler_id', $picId);
-            })
-                ->where('status_repair', 'Menunggu Spare Part')->count(),
-            'repaired' => Complaint::where(function ($query) use ($picId) {
-                $query->whereHas('room', fn ($query) => $query->where('pic_id', $picId))
-                    ->orWhere('handler_id', $picId);
-            })
-                ->where('status_repair', 'Sudah Diperbaiki')->count(),
+            'total' => Complaint::where($picScope)->where($visibleQuery)->count(),
+            'not_repaired' => Complaint::where($picScope)->where('status_repair', 'Belum Diperbaiki')->count(),
+            'in_repair' => Complaint::where($picScope)->where('status_repair', 'Sedang Diperbaiki')->count(),
+            'waiting_parts' => Complaint::where($picScope)->where('status_repair', 'Menunggu Spare Part')->count(),
+            'repaired' => Complaint::where($picScope)
+                ->where('status_repair', 'Sudah Diperbaiki')
+                ->where(function ($timeQ) use ($threshold) {
+                    $timeQ->where('repaired_at', '>=', $threshold)
+                        ->orWhere(function ($fallbackQ) use ($threshold) {
+                            $fallbackQ->whereNull('repaired_at')
+                                ->where('updated_at', '>=', $threshold);
+                        });
+                })->count(),
         ];
 
         return view('pic.complaints.index', compact('complaints', 'statistics'));
@@ -86,9 +100,17 @@ class ComplaintController extends Controller
         ]);
 
         $statusRepair = $validated['status_repair'];
+        $repairedAt = $complaint->repaired_at;
+        if ($statusRepair === 'Sudah Diperbaiki') {
+            $repairedAt = $repairedAt ?: now();
+        } else {
+            $repairedAt = null;
+        }
+
         $complaint->update([
             'status_repair' => $statusRepair,
             'handler_id' => auth()->id(),
+            'repaired_at' => $repairedAt,
             'is_escalated' => $statusRepair === 'Belum Diperbaiki' && $complaint->is_escalated,
         ]);
 

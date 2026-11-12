@@ -4,10 +4,11 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message, {this.statusCode});
+  const ApiException(this.message, {this.statusCode, this.data});
 
   final String message;
   final int? statusCode;
+  final dynamic data;
 
   @override
   String toString() => message;
@@ -189,7 +190,7 @@ class ApiClient {
       }
 
       errorMessage ??= 'Permintaan gagal dengan kode HTTP ${response.statusCode}';
-      throw ApiException(errorMessage, statusCode: response.statusCode);
+      throw ApiException(errorMessage, statusCode: response.statusCode, data: body);
     }
 
     return body;

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/constants.dart';
 import 'package:mobile/core/date_utils.dart';
 import 'package:mobile/models/event_model.dart';
+import 'package:mobile/models/room_model.dart';
 import 'package:mobile/models/user_model.dart';
 import 'package:mobile/views/auth/login_screen.dart';
 
@@ -12,7 +13,7 @@ void main() {
       MaterialApp(
         home: LoginScreen(
           currentBaseUrl: 'http://localhost/api',
-          onLoginSuccess: (_, _, _) {},
+          onLoginSuccess: (a, b, c) {},
           onBackToCalendar: () {},
         ),
       ),
@@ -24,7 +25,8 @@ void main() {
     expect(find.text('Masuk sebagai Siswa (Mode Tamu)'), findsNothing);
     expect(find.text('Portal Mobile untuk Guru dan PIC Ruang'), findsOneWidget);
     expect(find.text('ukk-aditya.test/api'), findsNothing);
-    expect(find.byTooltip('Pengaturan server API'), findsOneWidget);
+    expect(find.byTooltip('Pengaturan server API'), findsNothing);
+    expect(find.byIcon(Icons.settings_outlined), findsNothing);
   });
 
   group('Role Authorization Tests', () {
@@ -147,6 +149,72 @@ void main() {
       expect(event.occursOn(DateTime(2026, 11, 3)), isTrue);
       expect(event.occursOn(DateTime(2026, 11, 4)), isTrue);
       expect(event.occursOn(DateTime(2026, 11, 5)), isFalse);
+    });
+
+    test('Room model parses maintenance note and PIC WhatsApp URL', () {
+      final room = RoomModel.fromJson({
+        'id': 10,
+        'room_name': 'Lab 1',
+        'capacity': 36,
+        'pic_id': 2,
+        'is_active': 'Tidak aktif',
+        'maintenance_note': 'Sedang renovasi AC sampai Jumat.',
+        'pic': {
+          'id': 2,
+          'fullname': 'Pak Budi',
+          'phone_number': '083115722144',
+        },
+      });
+
+      expect(room.isActive, isFalse);
+      expect(room.maintenanceNote, 'Sedang renovasi AC sampai Jumat.');
+      expect(room.picName, 'Pak Budi');
+      expect(room.picPhone, '083115722144');
+      expect(room.picWhatsappUrl, contains('https://wa.me/6283115722144'));
+    });
+
+    test('Event model parses and computes lifecycle status and display', () {
+      final pastEvent = EventModel.fromJson({
+        'id': 101,
+        'event_name': 'Rapat Lama',
+        'date': '2020-01-01',
+        'start_time': '08:00:00',
+        'end_time': '09:00:00',
+        'status': 'approved',
+      });
+      expect(pastEvent.lifecycleDisplay, 'Sudah Terlaksana');
+
+      final futureEvent = EventModel.fromJson({
+        'id': 102,
+        'event_name': 'Rapat Depan',
+        'date': '2099-01-01',
+        'start_time': '08:00:00',
+        'end_time': '09:00:00',
+        'status': 'approved',
+      });
+      expect(futureEvent.lifecycleDisplay, 'Belum Terlaksana');
+
+      final pendingEvent = EventModel.fromJson({
+        'id': 103,
+        'event_name': 'Rapat Menunggu',
+        'date': '2026-11-20',
+        'start_time': '08:00:00',
+        'end_time': '09:00:00',
+        'status': 'pending',
+      });
+      expect(pendingEvent.lifecycleDisplay, 'Menunggu Persetujuan');
+
+      final explicitEvent = EventModel.fromJson({
+        'id': 104,
+        'event_name': 'Rapat Spesifik',
+        'date': '2026-11-20',
+        'start_time': '08:00:00',
+        'end_time': '09:00:00',
+        'status': 'approved',
+        'lifecycle_status': 'in_progress',
+        'lifecycle_status_label': 'Sedang Terlaksana',
+      });
+      expect(explicitEvent.lifecycleDisplay, 'Sedang Terlaksana');
     });
   });
 }

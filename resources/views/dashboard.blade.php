@@ -24,7 +24,15 @@
 
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <a href="{{ route('admin.rooms') }}" class="admin-management-card rounded-xl p-5 text-white shadow-sm"><p class="text-lg font-semibold">Manajemen Ruang</p><p class="mt-1 text-sm">{{ $statistics['active_rooms'] }} ruang aktif</p></a>
-                <a href="{{ route('admin.events') }}" class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 hover:ring-slate-400"><p class="text-lg font-semibold text-slate-900">Manajemen Agenda</p><p class="mt-1 text-sm text-slate-500">{{ $statistics['pending_events'] }} agenda menunggu persetujuan</p></a>
+                <a href="{{ route('admin.events') }}" class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 hover:ring-slate-400">
+                    <p class="text-lg font-semibold text-slate-900">Manajemen Agenda</p>
+                    <p class="mt-1 text-sm text-slate-500">
+                        {{ $statistics['pending_events'] }} agenda menunggu persetujuan
+                        @if (!empty($statistics['pending_cancellations']))
+                            · <span class="font-bold text-purple-600">{{ $statistics['pending_cancellations'] }} pengajuan batal</span>
+                        @endif
+                    </p>
+                </a>
                 <a href="{{ route('admin.complaints') }}" class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 hover:ring-slate-400"><p class="text-lg font-semibold text-slate-900">Manajemen Kerusakan</p><p class="mt-1 text-sm text-slate-500">{{ $statistics['complaints'] }} laporan tercatat</p></a>
             </div>
 

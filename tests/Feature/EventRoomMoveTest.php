@@ -216,6 +216,12 @@ class EventRoomMoveTest extends TestCase
     {
         [, $pic, $sourceRoom] = $this->createRoomSetup();
         $otherPic = $this->createUser('other-pic', $this->createRole('PIC Ruang'));
+        $otherRoom = Room::create([
+            'room_name' => 'Ruang Lain',
+            'capacity' => 25,
+            'pic_id' => $otherPic->id,
+            'is_active' => 'Aktif',
+        ]);
         $event = $this->createEvent($sourceRoom, $pic, '09:30', '10:15');
         $event->status = 'pending';
         $event->save();
@@ -268,7 +274,8 @@ class EventRoomMoveTest extends TestCase
         $approvedByPic->save();
 
         $otherPic = $this->createUser('other-pic', $this->createRole('PIC Ruang'));
-        $approvedByOtherPic = $this->createEvent($sourceRoom, $pic, '12:30', '13:15');
+        $otherPicRoom1 = $this->createRoom('Ruang PIC Lain 1', $otherPic);
+        $approvedByOtherPic = $this->createEvent($otherPicRoom1, $otherPic, '12:30', '13:15');
         $approvedByOtherPic->event_name = 'Disetujui PIC Lain';
         $approvedByOtherPic->approved_by = $otherPic->id;
         $approvedByOtherPic->save();
@@ -363,16 +370,103 @@ class EventRoomMoveTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_move_an_event_to_multiple_rooms(): void
+    {
+        [$admin, $pic, $sourceRoom, $destinationRoom1] = $this->createRoomSetup();
+        $destinationRoom2 = Room::create([
+            'room_name' => 'Lab IPA 2',
+            'capacity' => 36,
+            'pic_id' => $pic->id,
+            'is_active' => 'Aktif',
+        ]);
+
+        $event = $this->createEvent($sourceRoom, $pic, '09:30', '10:15');
+
+        $response = $this->actingAs($admin)
+            ->patch(route('admin.events.move', $event), [
+                'room_ids' => [$destinationRoom1->id, $destinationRoom2->id],
+                'move_reason' => 'Dipindahkan ke 2 ruangan untuk kapasitas lebih besar.',
+            ]);
+
+        $response->assertRedirect();
+        $event->refresh();
+
+        $this->assertEquals($destinationRoom1->id, $event->room_id);
+        $this->assertEquals(2, $event->rooms()->count());
+        $this->assertTrue($event->rooms->contains($destinationRoom1->id));
+        $this->assertTrue($event->rooms->contains($destinationRoom2->id));
+        $this->assertEquals('Dipindahkan ke 2 ruangan untuk kapasitas lebih besar.', $event->move_reason);
+
+        // Check WhatsApp message contains both room names
+        $location = $response->headers->get('Location');
+        $this->assertNotNull($location);
+        $message = rawurldecode($location);
+        $this->assertStringContainsString($destinationRoom1->room_name, $message);
+        $this->assertStringContainsString($destinationRoom2->room_name, $message);
+    }
+
+    public function test_admin_sees_whatsapp_coordination_shortcut_in_move_dialog(): void
+    {
+        [$admin, $pic, $sourceRoom] = $this->createRoomSetup();
+        $pic->update(['fullname' => 'Pak Budi Guru', 'phone_number' => '083115722144']);
+        $event = $this->createEvent($sourceRoom, $pic, '09:30', '10:15');
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.events'));
+
+        $response->assertOk();
+        $response->assertSee('Chat WhatsApp');
+        $response->assertSee('https://wa.me/6283115722144', false);
+        $response->assertSee('Peminjam Ruangan');
+        $response->assertSee('Pak Budi Guru');
+        $response->assertSee('Tambah Ruangan Tujuan');
+    }
+
+    public function test_completed_event_cannot_be_moved_by_admin(): void
+    {
+        [$admin, $pic, $sourceRoom, $destinationRoom] = $this->createRoomSetup();
+        $event = $this->createEvent($sourceRoom, $pic, '08:00', '09:00');
+        $event->update([
+            'date' => now()->subDays(2)->toDateString(),
+            'end_date' => now()->subDays(2)->toDateString(),
+            'completed_at' => now()->subDay(),
+        ]);
+
+        $this->assertEquals('completed', $event->lifecycle_status);
+        $this->assertFalse($event->canBeMovedByAdmin());
+
+        $this->actingAs($admin)
+            ->get(route('admin.events'))
+            ->assertOk()
+            ->assertSee('Tidak dapat dipindahkan (Sudah terlaksana)')
+            ->assertDontSee('data-open-move-dialog="move-event-' . $event->id . '"', false);
+
+        $response = $this->actingAs($admin)
+            ->patch(route('admin.events.move', $event), [
+                'room_ids' => [$destinationRoom->id],
+                'move_reason' => 'Ingin memindahkan agenda yang sudah selesai.',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'Agenda yang sudah terlaksana tidak dapat dipindahkan ruangannya karena sudah berakhir.');
+
+        $event->refresh();
+        $this->assertEquals($sourceRoom->id, $event->room_id);
+    }
+
     private function createEvent(Room $room, User $pic, string $start, string $end): Event
     {
-        return Event::create([
+        $event = Event::create([
             'room_id' => $room->id,
             'pic_id' => $pic->id,
             'event_name' => 'Kegiatan Sekolah',
-            'date' => '2026-10-20',
+            'date' => now()->addDay()->toDateString(),
             'start_time' => $start,
             'end_time' => $end,
             'status' => 'approved',
         ]);
+        $event->rooms()->sync([$room->id]);
+
+        return $event;
     }
 }

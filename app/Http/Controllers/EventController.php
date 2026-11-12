@@ -15,7 +15,7 @@ class EventController extends Controller
     {
         $this->ensureGuru();
 
-        $rooms = Room::sortRooms(Room::where('is_active', 'Aktif')->get());
+        $rooms = Room::sortRooms(Room::with(['pic', 'pics'])->get());
         $bookedEvents = Event::getActiveBookedEvents();
 
         return view('events.create', compact('rooms', 'bookedEvents'));
@@ -102,7 +102,7 @@ class EventController extends Controller
         }
 
         return redirect()
-            ->route('events.create')
+            ->route('guru.events')
             ->with('success', 'Pengajuan berhasil disimpan dan menunggu persetujuan.');
     }
 

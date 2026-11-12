@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\Room;
 use App\Support\ReportPeriod;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Collection;
@@ -15,18 +16,31 @@ class MonthlyReportController extends Controller
     public function index(Request $request)
     {
         $period = ReportPeriod::resolve($request);
-        $events = $this->periodEvents($period['start'], $period['end']);
+        $search = trim((string) $request->query('search', ''));
+        $status = (string) $request->query('status', '');
+        $roomId = (string) $request->query('room_id', '');
+
+        $events = $this->periodEvents($period['start'], $period['end'], $search, $status, $roomId);
+        $rooms = Room::orderBy('room_name')->get();
 
         return view('reports.monthly', [
             'period' => $period,
             'events' => $events,
+            'rooms' => $rooms,
+            'search' => $search,
+            'status' => $status,
+            'roomId' => $roomId,
         ]);
     }
 
     public function exportCsv(Request $request): StreamedResponse
     {
         $period = ReportPeriod::resolve($request, true);
-        $events = $this->periodEvents($period['start'], $period['end']);
+        $search = trim((string) $request->query('search', ''));
+        $status = (string) $request->query('status', '');
+        $roomId = (string) $request->query('room_id', '');
+
+        $events = $this->periodEvents($period['start'], $period['end'], $search, $status, $roomId);
         $filename = 'laporan-'.$period['slug'].'.csv';
 
         return response()->streamDownload(function () use ($events): void {
@@ -60,7 +74,11 @@ class MonthlyReportController extends Controller
     public function exportPdf(Request $request)
     {
         $period = ReportPeriod::resolve($request, true);
-        $events = $this->periodEvents($period['start'], $period['end']);
+        $search = trim((string) $request->query('search', ''));
+        $status = (string) $request->query('status', '');
+        $roomId = (string) $request->query('room_id', '');
+
+        $events = $this->periodEvents($period['start'], $period['end'], $search, $status, $roomId);
 
         return Pdf::loadView('reports.monthly-pdf', [
             'period' => $period,
@@ -70,13 +88,42 @@ class MonthlyReportController extends Controller
             ->download('laporan-'.$period['slug'].'.pdf');
     }
 
-    private function periodEvents(Carbon $start, Carbon $end): Collection
-    {
+    private function periodEvents(
+        Carbon $start,
+        Carbon $end,
+        ?string $search = null,
+        ?string $status = null,
+        ?string $roomId = null
+    ): Collection {
         return Event::with(['room', 'rooms', 'pic.role', 'approver.role'])
             ->whereDate('date', '<=', $end->toDateString())
             ->whereRaw('COALESCE(end_date, date) >= ?', [$start->toDateString()])
-            ->orderBy('date')
-            ->orderBy('start_time')
+            ->when($search !== null && $search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('event_name', 'like', "%{$search}%")
+                        ->orWhereHas('rooms', fn ($query) => $query->where('room_name', 'like', "%{$search}%"))
+                        ->orWhereHas('room', fn ($query) => $query->where('room_name', 'like', "%{$search}%"))
+                        ->orWhereHas('pic', fn ($query) => $query->where('fullname', 'like', "%{$search}%")->orWhere('username', 'like', "%{$search}%"));
+                });
+            })
+            ->when($roomId !== null && $roomId !== '', function ($query) use ($roomId) {
+                $query->where(function ($query) use ($roomId) {
+                    $query->where('room_id', $roomId)
+                        ->orWhereHas('rooms', fn ($query) => $query->where('rooms.id', $roomId));
+                });
+            })
+            ->when($status !== null && $status !== '', function ($query) use ($status) {
+                match ($status) {
+                    'upcoming' => $query->approvedUpcoming(),
+                    'in_progress' => $query->approvedInProgress(),
+                    'completed' => $query->approvedCompleted(),
+                    'cancelled' => $query->where('status', 'cancelled'),
+                    'rejected' => $query->where('status', 'rejected'),
+                    default => null,
+                };
+            })
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get();
     }
 

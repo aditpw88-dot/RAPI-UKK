@@ -99,7 +99,17 @@ class CustomPasswordController extends Controller
                 'otp_last_sent_at' => $now,
             ])->save();
 
-            Mail::to($user->email)->send(new SendOtpMail($otp, $user->fullname));
+            try {
+                Mail::to($user->email)->send(new SendOtpMail($otp, $user->fullname));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Gagal mengirim email OTP: '.$e->getMessage(), [
+                    'exception' => $e,
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                ]);
+
+                return ['user' => $user, 'remaining' => 0, 'mail_error' => $e->getMessage()];
+            }
 
             return ['user' => $user, 'remaining' => 0];
         });
@@ -113,8 +123,16 @@ class CustomPasswordController extends Controller
                 ]);
         }
 
+        if (! empty($result['mail_error'])) {
+            return redirect()->route('password.reset', ['step' => 'email'])
+                ->withInput(['email' => $validated['email']])
+                ->withErrors([
+                    'email' => 'Gagal mengirim email OTP: ' . $result['mail_error'] . '. Silakan periksa pengaturan MAIL / SMTP pada hosting Anda.',
+                ]);
+        }
+
         return redirect()->route('password.reset', ['step' => 'otp'])
-            ->with('status', 'Kode OTP telah dikirim ke email Anda.');
+            ->with('status', 'Kode OTP telah dikirim ke email Anda. (Periksa juga folder SPAM jika tidak muncul di kotak masuk).');
     }
 
     public function verifyOtp(Request $request)

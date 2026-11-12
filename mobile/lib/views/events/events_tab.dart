@@ -29,6 +29,7 @@ class EventsTabState extends State<EventsTab>
   late final TabController _tabController;
   int _refreshCounter = 0;
   String _searchQuery = '';
+  String _selectedCategory = 'Semua';
   DateTime? _filterDate;
 
   List<String> get _tabEndpoints {
@@ -39,7 +40,10 @@ class EventsTabState extends State<EventsTab>
         '/events/managed',
       ] else ...[
         '/events',
-        if (widget.user.isGuru) '/events/mine',
+        if (widget.user.isGuru) ...[
+          '/events/mine/approved',
+          '/events/mine',
+        ],
       ],
     ];
   }
@@ -51,8 +55,11 @@ class EventsTabState extends State<EventsTab>
         'Perlu Persetujuan',
         'Tidak Disetujui',
       ] else ...[
-        'Disetujui',
-        if (widget.user.isGuru) 'Agenda Saya',
+        'Semua Agenda',
+        if (widget.user.isGuru) ...[
+          'Disetujui',
+          'Agenda Saya',
+        ],
       ],
     ];
   }
@@ -229,16 +236,9 @@ class EventsTabState extends State<EventsTab>
     final bool showTabs = _tabLabels.length > 1;
 
     return Scaffold(
-      floatingActionButton: widget.user.isGuru
-          ? FloatingActionButton.extended(
-              onPressed: widget.onOpenCreateEvent,
-              icon: const Icon(Icons.add),
-              label: const Text('Ajukan Agenda'),
-            )
-          : null,
       body: Column(
         children: [
-          // Filter & Search bar
+          // Filter, Search bar & Tombol Ajukan (Rapi & Tidak Menabrak Pagination)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
             child: Row(
@@ -282,7 +282,54 @@ class EventsTabState extends State<EventsTab>
                         : const Color(0xFFEF4444),
                   ),
                 ),
+                if (widget.user.isGuru) ...[
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: widget.onOpenCreateEvent,
+                    icon: const Icon(Icons.add, size: 17),
+                    label: const Text('Ajukan'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.brandAmber,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
               ],
+            ),
+          ),
+
+          // Filter Kategori Horizontal untuk Guru & PIC
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+            child: Row(
+              children: ['Semua', ...AppConstants.eventCategories].map((cat) {
+                final isSelected = _selectedCategory == cat;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: FilterChip(
+                    label: Text(cat),
+                    selected: isSelected,
+                    onSelected: (_) {
+                      setState(() => _selectedCategory = cat);
+                    },
+                    selectedColor: AppTheme.brandAmberLight,
+                    checkmarkColor: AppTheme.brandAmber,
+                    labelStyle: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? AppTheme.brandAmber : const Color(0xFF475569),
+                    ),
+                    side: BorderSide(
+                      color: isSelected ? AppTheme.brandAmber : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
 
@@ -336,6 +383,12 @@ class EventsTabState extends State<EventsTab>
           if (showTabs)
             TabBar(
               controller: _tabController,
+              labelColor: AppTheme.brandAmber,
+              unselectedLabelColor: AppTheme.textSecondary,
+              indicatorColor: AppTheme.brandAmber,
+              indicatorWeight: 3,
+              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
               tabs: _tabLabels.map((label) => Tab(text: label)).toList(),
             ),
 
@@ -350,11 +403,12 @@ class EventsTabState extends State<EventsTab>
                           widget.user.isPic && _tabStatuses[index] == 'pending';
                       return _EventListView(
                         key: ValueKey(
-                          '$endpoint-${_tabStatuses[index]}-$_refreshCounter',
+                          '$endpoint-${_tabStatuses[index]}-$_refreshCounter-$_selectedCategory',
                         ),
                         api: widget.api,
                         endpoint: endpoint,
                         statusFilter: _tabStatuses[index],
+                        categoryFilter: _selectedCategory,
                         searchQuery: _searchQuery,
                         filterDate: _filterDate,
                         canManage: isPendingTab || isPicPendingTab,
@@ -367,10 +421,11 @@ class EventsTabState extends State<EventsTab>
                     }),
                   )
                 : _EventListView(
-                    key: ValueKey('/events-$_refreshCounter'),
+                    key: ValueKey('/events-$_refreshCounter-$_selectedCategory'),
                     api: widget.api,
                     endpoint: '/events',
                     statusFilter: null,
+                    categoryFilter: _selectedCategory,
                     searchQuery: _searchQuery,
                     filterDate: _filterDate,
                     canManage: false,
@@ -392,6 +447,7 @@ class _EventListView extends StatefulWidget {
     required this.api,
     required this.endpoint,
     required this.statusFilter,
+    required this.categoryFilter,
     required this.searchQuery,
     required this.filterDate,
     required this.canManage,
@@ -406,6 +462,7 @@ class _EventListView extends StatefulWidget {
   final ApiClient api;
   final String endpoint;
   final String? statusFilter;
+  final String categoryFilter;
   final String searchQuery;
   final DateTime? filterDate;
   final bool canManage;
@@ -442,6 +499,7 @@ class _EventListViewState extends State<_EventListView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.searchQuery != widget.searchQuery ||
         oldWidget.filterDate != widget.filterDate ||
+        oldWidget.categoryFilter != widget.categoryFilter ||
         oldWidget.endpoint != widget.endpoint ||
         oldWidget.statusFilter != widget.statusFilter) {
       setState(() => _currentPage = 0);
@@ -571,6 +629,13 @@ class _EventListViewState extends State<_EventListView> {
             return false;
           }
 
+          if (widget.categoryFilter.isNotEmpty &&
+              widget.categoryFilter != 'Semua') {
+            if (e.category != widget.categoryFilter) {
+              return false;
+            }
+          }
+
           if (widget.searchQuery.isNotEmpty) {
             final matchName = e.eventName.toLowerCase().contains(
               widget.searchQuery,
@@ -578,7 +643,10 @@ class _EventListViewState extends State<_EventListView> {
             final matchRoom = (e.roomName ?? '').toLowerCase().contains(
               widget.searchQuery,
             );
-            if (!matchName && !matchRoom) return false;
+            final matchCat = e.category.toLowerCase().contains(
+              widget.searchQuery,
+            );
+            if (!matchName && !matchRoom && !matchCat) return false;
           }
 
           if (widget.filterDate != null) {
@@ -702,25 +770,69 @@ class _EventListViewState extends State<_EventListView> {
                               ],
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppConstants.statusColor(
-                                event.status,
-                              ).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              event.statusDisplay,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppConstants.statusColor(event.status),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppConstants.statusColor(
+                                    event.status,
+                                  ).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  event.statusDisplay,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppConstants.statusColor(event.status),
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: event.lifecycleBgColor,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: event.lifecycleBorderColor,
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 5,
+                                      height: 5,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: event.lifecycleDotColor,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      event.lifecycleDisplay,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: event.lifecycleTextColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

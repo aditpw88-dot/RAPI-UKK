@@ -56,6 +56,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/events', [AdminManagementController::class, 'storeEvent'])->name('admin.events.store');
         Route::post('/school-events', [AdminManagementController::class, 'storeSchoolEvent'])->name('admin.school-events.store');
         Route::post('/events/{event}/approve', [AdminManagementController::class, 'approveEvent'])->name('admin.events.approve');
+        Route::post('/events/{event}/reject', [AdminManagementController::class, 'rejectEvent'])->name('admin.events.reject');
+        Route::post('/events/{event}/cancel', [AdminManagementController::class, 'cancelEvent'])->name('admin.events.cancel');
+        Route::post('/events/{event}/approve-cancellation', [AdminManagementController::class, 'approveCancellation'])->name('admin.events.approve-cancellation');
+        Route::post('/events/{event}/reject-cancellation', [AdminManagementController::class, 'rejectCancellation'])->name('admin.events.reject-cancellation');
         Route::patch('/events/{event}/move-reason', [AdminManagementController::class, 'saveMoveReason'])->name('admin.events.move-reason');
         Route::patch('/events/{event}/move', [AdminManagementController::class, 'moveEvent'])->name('admin.events.move');
         Route::delete('/events/{event}', [AdminManagementController::class, 'destroyEvent'])->name('admin.events.destroy');
@@ -76,14 +80,22 @@ Route::middleware('auth')->group(function () {
         ->name('pic.dashboard');
     Route::get('/pic/rooms', [PicDashboardController::class, 'rooms'])
         ->name('pic.rooms');
+    Route::patch('/pic/rooms/{room}/status', [PicDashboardController::class, 'updateRoomStatus'])
+        ->name('pic.rooms.update-status');
     Route::get('/pic/approvals', [PicDashboardController::class, 'approvals'])
         ->name('pic.approvals');
     Route::get('/pic/approved-events', [PicDashboardController::class, 'approvedEvents'])
         ->name('pic.events.approved');
     Route::get('/guru/dashboard', [GuruDashboardController::class, 'index'])
         ->name('guru.dashboard');
+    Route::get('/guru/events', [GuruDashboardController::class, 'eventsIndex'])
+        ->name('guru.events');
     Route::get('/guru/events/history', [GuruDashboardController::class, 'eventHistory'])
         ->name('guru.events.history');
+    Route::post('/guru/events/{event}/cancel-request', [GuruDashboardController::class, 'requestCancellation'])
+        ->name('guru.events.cancel-request');
+    Route::get('/guru/complaints', [GuruDashboardController::class, 'complaintsIndex'])
+        ->name('guru.complaints');
     Route::get('/guru/complaints/status', [GuruDashboardController::class, 'repairStatus'])
         ->name('guru.complaints.status');
     Route::get('/guru/complaints/create', [ComplaintController::class, 'create'])
@@ -106,6 +118,64 @@ Route::middleware('auth')->group(function () {
         ->name('pic.events.approve');
     Route::post('/pic/events/{event}/reject', [PicDashboardController::class, 'reject'])
         ->name('pic.events.reject');
+    Route::post('/pic/events/{event}/approve-cancellation', [PicDashboardController::class, 'approveCancellation'])
+        ->name('pic.events.approve-cancellation');
+    Route::post('/pic/events/{event}/reject-cancellation', [PicDashboardController::class, 'rejectCancellation'])
+        ->name('pic.events.reject-cancellation');
+});
+
+Route::get('/debug-email', function () {
+    $configCachePath = app()->getCachedConfigPath();
+    $isCached = file_exists($configCachePath);
+
+    $driver = config('mail.default');
+    $host = config('mail.mailers.smtp.host');
+    $port = config('mail.mailers.smtp.port');
+    $username = config('mail.mailers.smtp.username');
+    $password = config('mail.mailers.smtp.password');
+    $scheme = config('mail.mailers.smtp.scheme');
+    $encryption = config('mail.mailers.smtp.encryption');
+    $from = config('mail.from.address');
+
+    $passwordLength = strlen($password ?? '');
+    $hasSpaces = str_contains($password ?? '', ' ');
+
+    $testResult = null;
+    $testError = null;
+
+    if (request('send') === '1') {
+        try {
+            $recipient = request('to', $username ?: $from);
+            \Illuminate\Support\Facades\Mail::raw('Halo, ini uji coba pengiriman email dari Sistem RAPI skansaba-rapi.my.id pada: ' . now()->toDateTimeString(), function ($msg) use ($recipient) {
+                $msg->to($recipient)->subject('Uji Coba Email RAPI (' . now()->format('H:i:s') . ')');
+            });
+            $testResult = 'BERHASIL terkirim ke ' . $recipient . '! Periksa Inbox dan folder SPAM.';
+        } catch (\Throwable $e) {
+            $testError = $e->getMessage();
+        }
+    }
+
+    return response()->json([
+        'status' => 'Diagnostic Email RAPI',
+        'config_cached' => $isCached,
+        'config_cache_file' => $configCachePath,
+        'cache_warning' => $isCached ? 'HAPUS FILE INI di cPanel agar perubahan .env terbaca oleh Laravel!' : 'OK, tidak ada cache konfigurasi.',
+        'current_driver' => $driver,
+        'smtp_settings' => [
+            'host' => $host,
+            'port' => $port,
+            'username' => $username,
+            'password_length' => $passwordLength,
+            'password_has_spaces' => $hasSpaces ? 'PERINGATAN: Password mengandung spasi!' : 'OK (tanpa spasi)',
+            'scheme' => $scheme,
+            'encryption' => $encryption,
+            'from_address' => $from,
+        ],
+        'test_send' => request('send') === '1' ? [
+            'success' => $testResult !== null,
+            'message' => $testResult ?? ('GAGAL: ' . $testError),
+        ] : 'Tambahkan ?send=1 di URL untuk menguji pengiriman email nyata.',
+    ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 });
 
 require __DIR__.'/auth.php';

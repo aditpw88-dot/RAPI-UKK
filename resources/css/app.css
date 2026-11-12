@@ -47,6 +47,24 @@
 	.overflow-x-auto {
 		-webkit-overflow-scrolling: touch;
 	}
+
+	/* Styling konsisten untuk input tanggal di semua perangkat (termasuk iOS Safari & Chrome Mobile) */
+	input[type="date"] {
+		min-height: 38px;
+		background-color: #ffffff;
+		color: #1e293b;
+		cursor: pointer;
+	}
+
+	input[type="date"]::-webkit-calendar-picker-indicator {
+		opacity: 0.75;
+		cursor: pointer;
+		padding: 2px;
+	}
+
+	input[type="date"]::-webkit-calendar-picker-indicator:hover {
+		opacity: 1;
+	}
 }
 
 @layer components {

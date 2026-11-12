@@ -249,7 +249,17 @@
                                             </div>
                                         </td>
                                         <td class="px-5 py-4 align-middle whitespace-nowrap">
-                                            @if ($event->status === 'approved')
+                                            @if ($event->cancellation_status === 'pending')
+                                                <span class="inline-flex items-center gap-1.5 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-800 shadow-2xs">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse"></span>
+                                                    <span>Menunggu Pembatalan</span>
+                                                </span>
+                                            @elseif ($event->status === 'cancelled')
+                                                <span class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-800 shadow-2xs">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                                    <span>Dibatalkan</span>
+                                                </span>
+                                            @elseif ($event->status === 'approved')
                                                 @if ($event->lifecycle_status === 'completed')
                                                     <span class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 shadow-2xs">
                                                         <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>

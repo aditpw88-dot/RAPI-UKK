@@ -44,7 +44,7 @@
                     </div>
                 @else
                     @php($selectedRoomIds = is_array(old('room_ids')) ? old('room_ids') : (old('room_id') ? [old('room_id')] : []))
-                    <form action="{{ route('events.store') }}" method="POST" class="event-form" data-confirm-action="mengirim pengajuan agenda" data-confirm-item="Pengajuan agenda baru">
+                    <form id="guru-event-form" action="{{ route('events.store') }}" method="POST" class="event-form" data-confirm-action="mengirim pengajuan agenda" data-confirm-item="Pengajuan agenda baru">
                         @csrf
 
                         <section class="event-form-field-full rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -104,7 +104,17 @@
                                                             <select id="room-select-{{ $index }}" name="room_ids[]" data-room-select required class="sr-only" tabindex="-1" style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px;">
                                                                 <option value="">Pilih ruangan</option>
                                                                 @foreach ($rooms as $room)
-                                                                    <option value="{{ $room->id }}" data-name="{{ $room->room_name }}" data-capacity="{{ $room->capacity }}" @selected((string) $selectedRoomId === (string) $room->id)>
+                                                                    <option
+                                                                        value="{{ $room->id }}"
+                                                                        data-name="{{ $room->room_name }}"
+                                                                        data-capacity="{{ $room->capacity }}"
+                                                                        data-is-active="{{ $room->is_active ? '1' : '0' }}"
+                                                                        data-maintenance-note="{{ $room->maintenance_note ?? '' }}"
+                                                                        data-pic-name="{{ $room->pic_names }}"
+                                                                        data-pic-phone="{{ $room->pic_phone ?? '' }}"
+                                                                        data-pic-wa="{{ $room->pic_whatsapp_url ?? '' }}"
+                                                                        @selected((string) $selectedRoomId === (string) $room->id)
+                                                                    >
                                                                         {{ $room->room_name }} (Kapasitas {{ $room->capacity }})
                                                                     </option>
                                                                 @endforeach
@@ -150,7 +160,16 @@
                                                         <select name="room_ids[]" data-room-select required class="sr-only" tabindex="-1" style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px;">
                                                             <option value="">Pilih ruangan</option>
                                                             @foreach ($rooms as $room)
-                                                                <option value="{{ $room->id }}" data-name="{{ $room->room_name }}" data-capacity="{{ $room->capacity }}">
+                                                                <option
+                                                                    value="{{ $room->id }}"
+                                                                    data-name="{{ $room->room_name }}"
+                                                                    data-capacity="{{ $room->capacity }}"
+                                                                    data-is-active="{{ $room->is_active ? '1' : '0' }}"
+                                                                    data-maintenance-note="{{ $room->maintenance_note ?? '' }}"
+                                                                    data-pic-name="{{ $room->pic_names }}"
+                                                                    data-pic-phone="{{ $room->pic_phone ?? '' }}"
+                                                                    data-pic-wa="{{ $room->pic_whatsapp_url ?? '' }}"
+                                                                >
                                                                     {{ $room->room_name }} (Kapasitas {{ $room->capacity }})
                                                                 </option>
                                                             @endforeach
@@ -175,13 +194,27 @@
 
                                 <div class="event-form-field">
                                     <label for="date">Tanggal Mulai</label>
-                                    <input type="date" id="date" name="date" value="{{ old('date') }}" min="{{ now()->addDay()->toDateString() }}" required>
+                                    <div class="relative mt-1">
+                                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </span>
+                                        <input type="date" id="date" name="date" value="{{ old('date') }}" min="{{ now()->addDay()->toDateString() }}" required style="padding-left: 2.25rem;">
+                                    </div>
                                     <small class="event-form-help">Pengajuan wajib dilakukan paling lambat H-1.</small>
                                 </div>
 
                                 <div class="event-form-field">
                                     <label for="end_date">Tanggal Selesai</label>
-                                    <input type="date" id="end_date" name="end_date" value="{{ old('end_date', old('date')) }}" min="{{ old('date', now()->addDay()->toDateString()) }}" required>
+                                    <div class="relative mt-1">
+                                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </span>
+                                        <input type="date" id="end_date" name="end_date" value="{{ old('end_date', old('date')) }}" min="{{ old('date', now()->addDay()->toDateString()) }}" required style="padding-left: 2.25rem;">
+                                    </div>
                                 </div>
 
                                 <div class="event-form-field">
@@ -210,7 +243,7 @@
                         </section>
 
                         <div class="event-form-actions">
-                            <a href="{{ route('dashboard') }}" class="event-button event-button-secondary">Batal</a>
+                            <a href="{{ route('guru.events') }}" class="event-button event-button-secondary">Batal</a>
                             <button type="submit" class="event-button event-button-primary">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6" />
@@ -223,6 +256,8 @@
             </div>
         </div>
     </div>
+
+    @include('partials.room-maintenance-modal')
 </x-app-layout>
 
 <script>
@@ -354,21 +389,31 @@
 
         document.querySelectorAll('[data-room-status-badge]').forEach((badge) => {
             const roomId = badge.dataset.roomStatusBadge;
+            const isActive = badge.dataset.roomActive !== '0';
             const isOccupied = occupiedMap.has(String(roomId));
 
-            if (isOccupied) {
+            if (!isActive) {
+                badge.textContent = 'Dalam Perbaikan';
+                badge.className = 'text-xs px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-800 border border-amber-200';
+                const li = badge.closest('li');
+                if (li) {
+                    li.classList.add('bg-amber-50/40');
+                    li.classList.remove('bg-red-50/40');
+                }
+            } else if (isOccupied) {
                 badge.textContent = 'Dipakai';
                 badge.className = 'text-xs px-2 py-0.5 rounded-full font-semibold bg-red-100 text-red-700';
                 const li = badge.closest('li');
                 if (li) {
                     li.classList.add('bg-red-50/40');
+                    li.classList.remove('bg-amber-50/40');
                 }
             } else {
                 badge.textContent = 'Tersedia';
                 badge.className = 'text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60';
                 const li = badge.closest('li');
                 if (li) {
-                    li.classList.remove('bg-red-50/40');
+                    li.classList.remove('bg-red-50/40', 'bg-amber-50/40');
                 }
             }
         });
@@ -438,6 +483,7 @@
 
                 const statusSpan = document.createElement('span');
                 statusSpan.dataset.roomStatusBadge = opt.value;
+                statusSpan.dataset.roomActive = opt.dataset.isActive || '1';
                 statusSpan.className = 'text-xs px-2 py-0.5 rounded-full font-medium';
 
                 const capSpan = document.createElement('span');
@@ -460,6 +506,21 @@
         }
 
         function selectOption(val, text) {
+            const targetOpt = Array.from(select.options).find((o) => String(o.value) === String(val));
+            if (targetOpt && targetOpt.dataset.isActive === '0') {
+                closeDropdown();
+                if (typeof window.showRoomMaintenanceModal === 'function') {
+                    window.showRoomMaintenanceModal({
+                        roomName: targetOpt.dataset.name || targetOpt.text.split(' (')[0],
+                        note: targetOpt.dataset.maintenanceNote || '',
+                        picName: targetOpt.dataset.picName || '',
+                        picPhone: targetOpt.dataset.picPhone || '',
+                        picWa: targetOpt.dataset.picWa || '',
+                    });
+                }
+                return;
+            }
+
             select.value = val;
             input.value = text;
             input.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
@@ -710,7 +771,7 @@
         });
     });
 
-    document.querySelector('form')?.addEventListener('submit', (e) => {
+    document.getElementById('guru-event-form')?.addEventListener('submit', (e) => {
         const occupiedMap = getOccupiedRoomIds();
         const roomSelects = document.querySelectorAll('[data-room-select]');
         let firstInvalid = null;

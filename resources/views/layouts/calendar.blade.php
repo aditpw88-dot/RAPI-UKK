@@ -6,96 +6,32 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>{{ config('app.name', 'Laravel') }}</title>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
-        <style>
-            .calendar-site-header {
-                border-bottom: 3px solid #c96a1b;
-                background: linear-gradient(110deg, #211c18, #3b2b1b);
-                box-shadow: 0 2px 8px rgb(48 35 25 / 18%);
-                width: 100%;
-            }
-
-            .calendar-site-header-inner {
-                box-sizing: border-box;
-                display: flex;
-                width: 100%;
-                max-width: 100%;
-                min-height: 76px;
-                align-items: center;
-                justify-content: space-between;
-                margin: 0;
-                padding: 14px 36px;
-            }
-
-            .calendar-site-title {
-                color: #fffaf0;
-                font-size: 1.65rem;
-                font-weight: 800;
-                letter-spacing: 0.02em;
-                text-decoration: none;
-                transition: color 150ms ease;
-            }
-
-            .calendar-site-title:hover {
-                color: #f5c27a;
-            }
-
-            .calendar-login-button {
-                display: inline-flex;
-                min-width: 112px;
-                min-height: 46px;
-                box-sizing: border-box;
-                align-items: center;
-                justify-content: center;
-                border: 2px solid #f5c27a;
-                border-radius: 9px;
-                padding: 10px 24px;
-                background: #c96a1b;
-                box-shadow: 0 3px 8px rgb(0 0 0 / 24%);
-                color: #ffffff;
-                font-size: 1.05rem;
-                font-weight: 700;
-                text-decoration: none;
-                transition: background-color 150ms ease, transform 150ms ease;
-            }
-
-            .calendar-login-button:hover {
-                transform: translateY(-1px);
-                background: #a84e0b;
-                color: #ffffff;
-            }
-
-            @media (max-width: 640px) {
-                .calendar-site-header-inner {
-                    padding-right: 16px;
-                    padding-left: 16px;
-                }
-
-                .calendar-site-title {
-                    font-size: 1.25rem;
-                }
-
-                .calendar-login-button {
-                    min-width: 86px;
-                    min-height: 40px;
-                    padding: 8px 16px;
-                    font-size: 0.95rem;
-                }
-            }
-        </style>
     </head>
-    <body class="flex min-h-screen flex-col bg-white text-stone-900">
-        <header class="calendar-site-header">
-            <div class="calendar-site-header-inner">
-                <a href="{{ route('calendar') }}" class="calendar-site-title">Kalender Sekolah</a>
+    <body class="flex min-h-screen flex-col bg-stone-50/60 text-stone-900 antialiased">
+        <header class="sticky top-0 z-40 border-b-2 border-amber-600 bg-gradient-to-r from-[#211c18] via-[#2d221a] to-[#3b2b1b] shadow-md">
+            <div class="mx-auto flex max-w-7xl items-center justify-between px-3.5 py-2.5 sm:px-6 sm:py-3.5 lg:px-8">
+                <div class="flex items-center gap-2.5 text-white select-none cursor-default">
+                    <img src="{{ asset('images/rapi-logo.png') }}" alt="Logo RAPI" class="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-white p-0.5 object-contain shadow-xs">
+                    <div>
+                        <span class="text-base sm:text-xl font-extrabold tracking-tight text-amber-100">Kalender Sekolah</span>
+                        <p class="hidden text-[11px] font-medium text-amber-200/70 sm:block">Sistem Peminjaman & Agenda Ruang RAPI</p>
+                    </div>
+                </div>
                 @auth
-                    <a href="{{ route('dashboard') }}" class="calendar-login-button">Dashboard</a>
+                    <a href="{{ route('dashboard') }}" class="inline-flex min-h-[38px] sm:min-h-[42px] items-center justify-center gap-1.5 rounded-lg sm:rounded-xl border border-amber-400/50 bg-amber-600 px-3.5 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-bold text-white shadow-xs transition hover:bg-amber-700 active:scale-95 touch-manipulation">
+                        <span>Dashboard</span>
+                        <span aria-hidden="true">&rarr;</span>
+                    </a>
                 @else
-                    <a href="{{ route('login') }}" class="calendar-login-button">Login</a>
+                    <a href="{{ route('login') }}" class="inline-flex min-h-[38px] sm:min-h-[42px] items-center justify-center gap-1.5 rounded-lg sm:rounded-xl border border-amber-400/50 bg-amber-600 px-3.5 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-sm font-bold text-white shadow-xs transition hover:bg-amber-700 active:scale-95 touch-manipulation">
+                        <span>Masuk</span>
+                        <span aria-hidden="true">&rarr;</span>
+                    </a>
                 @endauth
             </div>
         </header>
 
-        <main class="flex-1">
+        <main class="flex-1 w-full">
             @yield('content')
         </main>
         <x-site-footer />

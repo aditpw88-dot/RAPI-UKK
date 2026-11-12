@@ -37,66 +37,24 @@ class CalendarController extends Controller
         $startDate = Carbon::parse($validated['start'])->toDateString();
         $endDate = Carbon::parse($validated['end'])->toDateString();
 
-        try {
-            $holidays = Cache::remember('indonesia-holidays', now()->addHours(6), function (): array {
-                $response = Http::timeout(8)->get(
-                    'https://raw.githubusercontent.com/guangrei/APIHariLibur_V2/main/holidays.json'
-                );
-
-                if (! $response->successful()) {
-                    throw new RequestException($response);
-                }
-
-                $data = $response->json();
-                if (! is_array($data)) {
-                    throw new UnexpectedValueException('The holiday API returned an invalid response.');
-                }
-
-                return $data;
-            });
-        } catch (ConnectionException|RequestException|UnexpectedValueException $exception) {
-            Log::warning('Unable to load Indonesian public holidays.', [
-                'exception' => $exception->getMessage(),
-            ]);
-
-            return response()->json([
-                'message' => 'Data hari libur nasional sedang tidak dapat dimuat.',
-            ], 503);
-        }
-
-        $events = [];
-        foreach ($holidays as $date => $holiday) {
-            if (
-                ! is_string($date)
-                || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)
-                || $date < $startDate
-                || $date >= $endDate
-                || ! is_array($holiday)
-                || ! is_string($holiday['summary'] ?? null)
-            ) {
-                continue;
-            }
-
-            $events[] = [
-                'id' => 'holiday-'.$date,
-                'title' => $holiday['summary'],
-                'start' => $date,
-                'allDay' => true,
-                'backgroundColor' => '#ffe4e6',
-                'borderColor' => '#e11d48',
-                'textColor' => '#9f1239',
-                'extendedProps' => ['isHoliday' => true],
-            ];
-        }
+        $events = \App\Services\IndonesianHolidayService::getHolidays($startDate, $endDate);
 
         return response()->json($events);
     }
 
-    public static function approvedEvents()
+    public static function approvedEvents(bool $includeCompleted = false)
     {
         return \App\Models\Event::with(['room', 'rooms', 'pic'])
             ->where('status', 'approved')
             ->get()
+            ->filter(function ($event) use ($includeCompleted) {
+                if ($includeCompleted) {
+                    return true;
+                }
+                // Agenda yang sudah selesai di jam-jam sebelumnya (waktu selesai sudah lewat)
+                // otomatis terhapus dari tampilan kalender utama dan masuk ke laporan admin.
+                return $event->lifecycle_status !== 'completed';
+            })
             ->map(function ($event) {
                 return [
                     'id' => $event->id,
@@ -116,6 +74,8 @@ class CalendarController extends Controller
                     'end_date' => $event->end_date ?? $event->date,
                     'start_time' => $event->start_time,
                     'end_time' => $event->end_time,
+                    'completed_at' => $event->completed_at?->toIso8601String(),
+                    'is_completed_over_24h' => $event->isCompletedOver24Hours(),
                     'lifecycle_status' => $event->lifecycle_status,
                     'lifecycle_status_label' => $event->lifecycle_status_label,
                     'lifecycle_badge_class' => $event->lifecycle_badge_class,
@@ -123,6 +83,7 @@ class CalendarController extends Controller
                     'lifecycleStatusLabel' => $event->lifecycle_status_label,
                     ...$event->calendarColors(),
                 ];
-            });
+            })
+            ->values();
     }
 }

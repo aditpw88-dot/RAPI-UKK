@@ -79,15 +79,15 @@
         flex-direction: column;
     }
 
+    /* Reset container kalender agar membungkus rapi di dalam card */
     #calendar {
         width: 100%;
         max-width: 100%;
         margin: 0;
-        background-color: #ffffff;
-        padding: 20px 22px;
-        border: 1px solid #e6d3bc;
-        border-radius: 16px;
-        box-shadow: 0 10px 25px -5px rgb(54 38 24 / 8%), 0 8px 10px -6px rgb(54 38 24 / 4%);
+        background-color: transparent;
+        padding: 0;
+        border: none;
+        box-shadow: none;
     }
 
     .calendar-actions {
@@ -192,6 +192,74 @@
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 6px;
+    }
+
+    /* Filter & Pencarian Agenda Sekolah di Samping / Bawah Kalender */
+    .agenda-side-filter-box {
+        padding: 10px 14px 12px;
+        background: #fdfaf7;
+        border-bottom: 1px solid #f1e5d6;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .agenda-side-search-wrap {
+        position: relative;
+        width: 100%;
+    }
+
+    .agenda-side-search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        pointer-events: none;
+    }
+
+    .agenda-side-search-input {
+        width: 100%;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px 10px 6px 30px;
+        font-size: 0.8rem;
+        color: #1e293b;
+        background: #ffffff;
+        outline: none;
+        transition: all 0.15s ease;
+        box-sizing: border-box;
+    }
+
+    .agenda-side-search-input:focus {
+        border-color: #c96a1b;
+        box-shadow: 0 0 0 2px rgba(201, 106, 27, 0.12);
+    }
+
+    .agenda-side-filter-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        width: 100%;
+    }
+
+    .agenda-side-select {
+        width: 100%;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 5px 8px;
+        font-size: 0.76rem;
+        font-weight: 500;
+        color: #334155;
+        background: #ffffff;
+        outline: none;
+        transition: all 0.15s ease;
+        cursor: pointer;
+    }
+
+    .agenda-side-select:focus {
+        border-color: #c96a1b;
+        box-shadow: 0 0 0 2px rgba(201, 106, 27, 0.12);
     }
 
     .agenda-side-body {
@@ -787,6 +855,135 @@
         display: none !important;
     }
 
+    /* Batasi tampilan agenda di kotak tanggal kalender maksimal 3 agenda (Desktop badge & Mobile dot) */
+    #calendar .fc-daygrid-day-events .fc-daygrid-event-harness:nth-child(n+4) {
+        display: none !important;
+    }
+
+    .agenda-dialog-filter-wrap {
+        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .agenda-dialog-search-wrap {
+        position: relative;
+        width: 100%;
+    }
+
+    .agenda-dialog-search-input {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        padding: 7px 12px 7px 34px;
+        font-size: 0.82rem;
+        color: #1e293b;
+        background: #f8fafc;
+        outline: none;
+        transition: border-color 0.15s ease, background 0.15s ease;
+        box-sizing: border-box;
+    }
+
+    .agenda-dialog-search-input:focus {
+        border-color: #c96a1b;
+        background: #ffffff;
+        box-shadow: 0 0 0 2px rgba(201, 106, 27, 0.15);
+    }
+
+    .agenda-dialog-search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+    }
+
+    .agenda-dialog-filter-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .agenda-dialog-select {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: #334155;
+        background: #f8fafc;
+        outline: none;
+        transition: border-color 0.15s ease, background 0.15s ease;
+        box-sizing: border-box;
+        cursor: pointer;
+    }
+
+    .agenda-dialog-select:focus {
+        border-color: #c96a1b;
+        background: #ffffff;
+        box-shadow: 0 0 0 2px rgba(201, 106, 27, 0.15);
+    }
+
+    .agenda-dialog-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid #e2e8f0;
+        font-size: 0.78rem;
+        color: #64748b;
+        flex-wrap: wrap;
+    }
+
+    .agenda-dialog-pagination-btns {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .agenda-dialog-page-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #334155;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .agenda-dialog-page-btn:hover:not(:disabled) {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #0f172a;
+    }
+
+    .agenda-dialog-page-btn.active {
+        background: #c96a1b;
+        border-color: #c96a1b;
+        color: #ffffff;
+    }
+
+    .agenda-dialog-page-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        background: #f8fafc;
+    }
+
     .agenda-dialog {
         width: min(580px, calc(100vw - 2rem));
         max-height: min(85vh, 720px);
@@ -895,25 +1092,53 @@
 
     .agenda-dialog-item-top {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        gap: 8px;
+        gap: 10px;
     }
 
     .agenda-dialog-item-title {
-        font-size: 0.98rem;
+        font-size: 0.95rem;
         font-weight: 700;
         color: #1e293b;
+        line-height: 1.35;
+        word-break: break-word;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .agenda-dialog-item-badges {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
     }
 
     .agenda-dialog-item-badge {
         font-size: 0.72rem;
         font-weight: 600;
-        padding: 2px 8px;
+        padding: 2.5px 8px;
         border-radius: 9999px;
         background: #f1f5f9;
         color: #475569;
         white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 520px) {
+        .agenda-dialog-item-top {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .agenda-dialog-item-badges {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
     }
 
     .agenda-dialog-item-meta {
@@ -1091,26 +1316,112 @@
             font-size: 0.72rem !important;
         }
 
+        /* Tampilan Mobile: Ubah badge teks panjang yang berdesakan menjadi indikator titik warna (Dot Indicators) */
         #calendar .fc-daygrid-day-frame {
-            min-height: 52px !important;
+            min-height: 48px !important;
+            height: 52px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            padding: 2px 1px !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        #calendar .fc-daygrid-day-top {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 100% !important;
+            flex-direction: row !important;
+            margin-bottom: 2px !important;
         }
 
         #calendar .fc-daygrid-day-number {
             font-size: 0.75rem !important;
-            padding: 2px 4px !important;
+            padding: 1px 4px !important;
+            font-weight: 600 !important;
+            line-height: 1.2 !important;
+        }
+
+        #calendar .fc-daygrid-day-events {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            align-items: center !important;
+            gap: 2.5px !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+            width: 100% !important;
+            max-width: 44px !important;
+            min-height: 8px !important;
+            overflow: hidden !important;
+        }
+
+        #calendar .fc-daygrid-event-harness {
+            margin: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex: 0 0 auto !important;
+            line-height: 1 !important;
+            visibility: visible !important;
         }
 
         #calendar .fc-daygrid-event {
-            font-size: 0.7rem !important;
-            padding: 1.5px 3px !important;
-            margin: 1px 0 !important;
-            border-radius: 4px !important;
-            line-height: 1.25 !important;
+            display: inline-block !important;
+            width: 7px !important;
+            height: 7px !important;
+            min-width: 7px !important;
+            max-width: 7px !important;
+            border-radius: 50% !important;
+            padding: 0 !important;
+            margin: 0.5px !important;
+            border: none !important;
+            background-color: currentColor !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+            cursor: pointer !important;
+            flex-shrink: 0 !important;
+        }
+
+        #calendar .fc-daygrid-event .fc-event-main,
+        #calendar .fc-daygrid-event .fc-event-title,
+        #calendar .fc-daygrid-event .fc-event-time {
+            display: none !important;
+        }
+
+        #calendar .fc-daygrid-day-bottom {
+            display: none !important;
         }
 
         #calendar .fc-daygrid-more-link,
         #calendar .fc-more-link {
             display: none !important;
+        }
+
+        .calendar-legend {
+            padding: 8px 10px !important;
+            gap: 6px 12px !important;
+            font-size: 0.75rem !important;
+            margin-top: 10px !important;
+        }
+
+        .calendar-legend-item {
+            gap: 5px !important;
+        }
+
+        .calendar-legend-swatch {
+            width: 8px !important;
+            height: 8px !important;
+            border-radius: 50% !important;
+            border-width: 1.5px !important;
+        }
+
+        .agenda-card-item {
+            width: 100% !important;
+            padding: 11px 12px !important;
         }
 
         .calendar-actions {
@@ -1152,16 +1463,45 @@
     }
 </style>
 
-<div class="calendar-content">
-    <div class="calendar-page">
+<div class="w-full min-h-screen bg-stone-50/50 py-3 sm:py-6 px-3 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl">
 
+        <!-- Banner Judul Halaman Responsif -->
+        <div class="mb-4 sm:mb-6 rounded-2xl border border-stone-800/40 bg-gradient-to-br from-[#291f16] to-[#402e1f] p-4 sm:p-6 text-white shadow-md">
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-lg sm:text-2xl font-extrabold tracking-tight text-amber-100">Kalender & Agenda Ruang PIC</h2>
+                    <p class="mt-0.5 text-xs sm:text-sm text-amber-200/80">Pantau ketersediaan ruang dan jadwal kegiatan sekolah secara interaktif.</p>
+                </div>
+                <div class="mt-2 sm:mt-0 flex items-center gap-2 text-xs font-semibold text-amber-200/90">
+                    <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Panel PIC Terintegrasi</span>
+                </div>
+            </div>
+        </div>
 
-    <!-- Layout 2 Kolom: Kalender di Kiri, Agenda di Kanan -->
-    <div class="calendar-layout-grid">
-        <!-- Kolom Kiri: Kalender Interaktif -->
-        <div class="calendar-main-col">
-            <div id="calendar"></div>
-            <x-calendar-legend />
+        <!-- 1. Grid Layout Responsif: 1 Kolom di Layar Kecil (mobile/tablet), 3 Kolom di Layar Lebar (lg) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full items-start">
+            
+            <!-- Kolom 1 (Kalender Sekolah - Mengambil 2 Kolom di Desktop): lg:col-span-2 -->
+            <div class="lg:col-span-2 min-w-0 w-full flex flex-col gap-4">
+                
+                <!-- 2. Perbaikan Kalender: Dibungkus container overflow-x-auto untuk swipe horizontal mulus di HP -->
+                <div class="calendar-card w-full overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-3 sm:p-5 shadow-xs">
+                    <div class="w-full overflow-x-auto scrollbar-thin -webkit-overflow-scrolling-touch">
+                        <div id="calendar" class="min-w-[340px] sm:min-w-0 w-full"></div>
+                    </div>
+                    <!-- Petunjuk Tampilan Ponsel -->
+                    <div class="sm:hidden mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-center gap-1.5 text-[11.5px] text-stone-500 font-medium text-center">
+                        <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                        </svg>
+                        <span>Ketuk tanggal bertitik untuk membuka rincian agenda</span>
+                    </div>
+                </div>
+
+                <!-- Legend Keterangan Warna Agenda -->
+                <x-calendar-legend />
 
             <!-- Filter Toolbar Kalender (Akan dipasang otomatis di kanan header kalender) -->
             <div id="calendar-header-filter-template" style="display: none;">
@@ -1197,21 +1537,22 @@
         </div>
 
         <!-- Kolom Kanan: Daftar Agenda Sedang Berlangsung & Akan Datang -->
-        <div class="agenda-side-col">
+        <div class="lg:col-span-1 min-w-0 w-full flex flex-col">
             @php
                 $now = now();
                 $today = $now->toDateString();
+                $threshold = $now->copy()->subHours(24);
                 $activeAndUpcomingEvents = collect($events ?? [])
-                    ->map(function ($ev) use ($now, $today) {
+                    ->map(function ($ev) use ($now, $today, $threshold) {
                         $lifecycle = $ev['lifecycle_status'] ?? null;
-                        if (!$lifecycle) {
-                            $startDate = $ev['date'] ?? $today;
-                            $endDate = $ev['end_date'] ?? $startDate;
-                            $startTime = $ev['start_time'] ?? (!empty($ev['start']) && str_contains($ev['start'], 'T') ? explode('T', $ev['start'])[1] : '00:00:00');
-                            $endTime = $ev['end_time'] ?? (!empty($ev['end']) && str_contains($ev['end'], 'T') ? explode('T', $ev['end'])[1] : '23:59:59');
-                            $startDt = \Illuminate\Support\Carbon::parse("{$startDate} {$startTime}");
-                            $endDt = \Illuminate\Support\Carbon::parse("{$endDate} {$endTime}");
+                        $startDate = $ev['date'] ?? $today;
+                        $endDate = $ev['end_date'] ?? $startDate;
+                        $startTime = $ev['start_time'] ?? (!empty($ev['start']) && str_contains($ev['start'], 'T') ? explode('T', $ev['start'])[1] : '00:00:00');
+                        $endTime = $ev['end_time'] ?? (!empty($ev['end']) && str_contains($ev['end'], 'T') ? explode('T', $ev['end'])[1] : '23:59:59');
+                        $startDt = \Illuminate\Support\Carbon::parse("{$startDate} {$startTime}");
+                        $endDt = \Illuminate\Support\Carbon::parse("{$endDate} {$endTime}");
 
+                        if (!$lifecycle) {
                             if ($now->greaterThanOrEqualTo($endDt)) {
                                 $lifecycle = 'completed';
                             } elseif ($now->lessThan($startDt)) {
@@ -1221,8 +1562,21 @@
                             }
                         }
                         $ev['display_lifecycle'] = $lifecycle;
+
+                        if (array_key_exists('is_completed_over_24h', $ev)) {
+                            $ev['hide_from_sidebar'] = (bool) $ev['is_completed_over_24h'];
+                        } elseif ($lifecycle === 'completed') {
+                            $finishedAt = !empty($ev['completed_at'])
+                                ? \Illuminate\Support\Carbon::parse($ev['completed_at'])
+                                : $endDt;
+                            $ev['hide_from_sidebar'] = $finishedAt->lessThanOrEqualTo($threshold);
+                        } else {
+                            $ev['hide_from_sidebar'] = false;
+                        }
+
                         return $ev;
                     })
+                    ->reject(fn ($ev) => !empty($ev['hide_from_sidebar']) || ($ev['display_lifecycle'] ?? '') === 'completed')
                     ->sortBy(function ($ev) {
                         $order = match($ev['display_lifecycle']) {
                             'in_progress' => 0,
@@ -1242,11 +1596,35 @@
                         </svg>
                         <span>Agenda Sekolah</span>
                     </h3>
-                    <span class="agenda-badge-count">{{ $activeAndUpcomingEvents->count() }} Agenda</span>
+                    <span id="side-agenda-count-badge" class="agenda-badge-count">{{ $activeAndUpcomingEvents->count() }} Agenda</span>
                 </div>
                 <div class="agenda-side-subtitle">
                     <span class="font-medium text-slate-700">Status Pelaksanaan</span>
                     <span class="text-[11px] text-slate-500">Klik untuk melihat detail</span>
+                </div>
+
+                <!-- Form Filter & Pencarian Agenda Sekolah Bawah/Samping Kalender -->
+                <div class="agenda-side-filter-box">
+                    <div class="agenda-side-search-wrap">
+                        <svg class="agenda-side-search-icon" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="search" id="side-agenda-search" class="agenda-side-search-input" placeholder="Cari nama agenda, ruangan, PIC..." aria-label="Cari agenda sekolah">
+                    </div>
+                    <div class="agenda-side-filter-row">
+                        <select id="side-agenda-filter-status" class="agenda-side-select" aria-label="Filter Status Agenda">
+                            <option value="">Semua Status</option>
+                            <option value="in_progress">Sedang Terlaksana</option>
+                            <option value="upcoming">Akan Terlaksana</option>
+                            <option value="completed">Sudah Terlaksana</option>
+                        </select>
+                        <select id="side-agenda-filter-type" class="agenda-side-select" aria-label="Filter Kategori Agenda">
+                            <option value="">Semua Kategori</option>
+                            @foreach (config('event_types') as $typeKey => $typeCfg)
+                                <option value="{{ $typeKey }}">{{ $typeCfg['label'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 <div id="agenda-cards-container" class="agenda-side-body">
@@ -1277,7 +1655,14 @@
                             $endDateFmt = !empty($item['end_date']) && $item['end_date'] !== $item['date'] ? date('d/m/Y', strtotime($item['end_date'])) : '';
                             $dateFormatted = $endDateFmt ? "{$startDateFmt} - {$endDateFmt}" : $startDateFmt;
                         @endphp
-                        <div class="agenda-card-item group" style="border-left-color: {{ $item['borderColor'] ?? '#c96a1b' }}; {{ $loop->iteration > 4 ? 'display: none;' : '' }}" onclick="openEventById('{{ $item['id'] }}', '{{ $item['date'] }}')">
+                        <div class="agenda-card-item group"
+                             data-title="{{ strtolower($item['title'] ?? '') }}"
+                             data-room="{{ strtolower($item['roomName'] ?? '') }}"
+                             data-pic="{{ strtolower($item['picName'] ?? '') }}"
+                             data-type="{{ strtolower($item['eventType'] ?? '') }}"
+                             data-status="{{ strtolower($lifecycle) }}"
+                             style="border-left-color: {{ $item['borderColor'] ?? '#c96a1b' }}; {{ $loop->iteration > 5 ? 'display: none;' : '' }}"
+                             onclick="openEventById('{{ $item['id'] }}', '{{ $item['date'] }}')">
                             <div class="agenda-card-top">
                                 <h4 class="agenda-card-title">{{ $item['title'] }}</h4>
                                 @if ($lifecycle === 'in_progress')
@@ -1345,6 +1730,11 @@
                             <p class="mt-1 text-xs text-slate-500">Agenda yang sedang berlangsung atau yang akan datang akan tampil di sini.</p>
                         </div>
                     @endforelse
+
+                    <div id="side-agenda-empty-search" class="agenda-empty-state" style="display: none;">
+                        <p class="font-medium text-slate-700">Tidak ada agenda yang cocok</p>
+                        <p class="mt-1 text-xs text-slate-500">Coba ubah kata kunci pencarian atau ganti filter status & kategori.</p>
+                    </div>
                 </div>
 
                 <!-- Paginasi 5 Data Per Halaman -->
@@ -1496,17 +1886,35 @@
             dialogContent.append(header, card);
         }
 
+        function getEventLifecycleOrder(event) {
+            const status = (event.extendedProps?.lifecycleStatus || event.extendedProps?.lifecycle_status || '').toLowerCase();
+            if (status === 'in_progress') return 0; // 1: Sedang terlaksana
+            if (status === 'upcoming') return 1;    // 2: Akan / Belum terlaksana
+            if (status === 'completed') return 2;   // 3: Sudah terlaksana
+            return 3;
+        }
+
+        function compareEventsByLifecycle(a, b) {
+            const orderA = getEventLifecycleOrder(a);
+            const orderB = getEventLifecycleOrder(b);
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+            if (a.allDay && !b.allDay) return -1;
+            if (!a.allDay && b.allDay) return 1;
+            return (a.startStr || '').localeCompare(b.startStr || '') || (a.title || '').localeCompare(b.title || '');
+        }
+
         function showDateAgendas(dateString) {
-            const selectedEvents = calendar.getEvents()
+            const allSelectedEvents = calendar.getEvents()
                 .filter((event) => {
                     if (event.extendedProps.isHoliday) return false;
                     return eventOccursOnDate(event, dateString);
                 })
-                .sort((a, b) => {
-                    if (a.allDay && !b.allDay) return -1;
-                    if (!a.allDay && b.allDay) return 1;
-                    return (a.startStr || '').localeCompare(b.startStr || '');
-                });
+                .sort(compareEventsByLifecycle);
+
+            const holidays = calendar.getEvents()
+                .filter((event) => event.extendedProps.isHoliday && eventOccursOnDate(event, dateString));
 
             dialogContent.replaceChildren();
 
@@ -1518,7 +1926,7 @@
             title.id = 'agenda-dialog-title';
             title.textContent = `Agenda ${formatDate(dateString)}`;
             const subtitle = document.createElement('p');
-            subtitle.textContent = `${selectedEvents.length} agenda berlangsung pada tanggal ini`;
+            subtitle.textContent = `${allSelectedEvents.length} agenda tersimpan pada tanggal ini`;
             heading.append(title, subtitle);
 
             const actions = document.createElement('div');
@@ -1532,16 +1940,130 @@
 
             header.append(heading, actions);
 
-            const list = document.createElement('div');
-            list.className = 'agenda-dialog-list';
+            const bodyContainer = document.createElement('div');
 
-            if (selectedEvents.length === 0) {
+            if (holidays.length > 0) {
+                const holidayBanner = document.createElement('div');
+                holidayBanner.style.cssText = 'padding: 9px 12px; border-radius: 8px; background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; font-size: 0.82rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;';
+                holidayBanner.innerHTML = `<span>🚩</span> <span>Libur Nasional: ${holidays.map(h => h.title).join(', ')}</span>`;
+                bodyContainer.append(holidayBanner);
+            }
+
+            if (allSelectedEvents.length === 0 && holidays.length === 0) {
                 const empty = document.createElement('p');
                 empty.className = 'agenda-dialog-empty';
                 empty.textContent = 'Tidak ada agenda pada tanggal ini.';
-                list.append(empty);
-            } else {
-                selectedEvents.forEach((event) => {
+                bodyContainer.append(empty);
+                dialogContent.append(header, bodyContainer);
+                appendWakaForm(dialogContent, dateString);
+                return;
+            } else if (allSelectedEvents.length === 0 && holidays.length > 0) {
+                const empty = document.createElement('p');
+                empty.className = 'agenda-dialog-empty';
+                empty.textContent = 'Tidak ada kegiatan atau rapat sekolah pada tanggal merah ini.';
+                bodyContainer.append(empty);
+                dialogContent.append(header, bodyContainer);
+                appendWakaForm(dialogContent, dateString);
+                return;
+            }
+
+            // Filter & Pencarian di dalam Dialog
+            const filterWrap = document.createElement('div');
+            filterWrap.className = 'agenda-dialog-filter-wrap';
+            filterWrap.innerHTML = `
+                <div class="agenda-dialog-search-wrap">
+                    <span class="agenda-dialog-search-icon">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </span>
+                    <input type="search" class="agenda-dialog-search-input" placeholder="Cari nama agenda, ruangan, PIC..." aria-label="Cari agenda pada tanggal ini">
+                </div>
+                <div class="agenda-dialog-filter-row">
+                    <select class="agenda-dialog-select filter-status" aria-label="Filter Status">
+                        <option value="">Semua Status</option>
+                        <option value="in_progress">Sedang Terlaksana</option>
+                        <option value="upcoming">Akan Terlaksana</option>
+                        <option value="completed">Sudah Terlaksana</option>
+                    </select>
+                    <select class="agenda-dialog-select filter-type" aria-label="Filter Kategori">
+                        <option value="">Semua Kategori</option>
+                    </select>
+                </div>
+            `;
+            bodyContainer.append(filterWrap);
+
+            const searchInput = filterWrap.querySelector('.agenda-dialog-search-input');
+            const statusSelect = filterWrap.querySelector('.filter-status');
+            const typeSelect = filterWrap.querySelector('.filter-type');
+
+            eventTypeOptions.forEach((opt) => {
+                const optEl = document.createElement('option');
+                optEl.value = opt.value;
+                optEl.textContent = opt.label;
+                typeSelect.append(optEl);
+            });
+
+            const list = document.createElement('div');
+            list.className = 'agenda-dialog-list';
+            bodyContainer.append(list);
+
+            const paginationContainer = document.createElement('div');
+            paginationContainer.className = 'agenda-dialog-pagination';
+            bodyContainer.append(paginationContainer);
+
+            let searchQuery = '';
+            let statusFilter = '';
+            let typeFilter = '';
+            let currentPage = 1;
+            const pageSize = 5;
+
+            function renderModalEvents() {
+                list.replaceChildren();
+                paginationContainer.replaceChildren();
+
+                const q = (searchQuery || '').toLowerCase().trim();
+                const st = (statusFilter || '').toLowerCase().trim();
+                const tp = (typeFilter || '').toLowerCase().trim();
+
+                const filtered = allSelectedEvents.filter(ev => {
+                    const name = (ev.extendedProps.eventName || ev.title || '').toLowerCase();
+                    const room = (ev.extendedProps.roomName || '').toLowerCase();
+                    const type = (eventTypeLabels[ev.extendedProps.eventType] || '').toLowerCase();
+                    const pic = (ev.extendedProps.picName || '').toLowerCase();
+                    const lcLabel = (ev.extendedProps.lifecycleStatusLabel || ev.extendedProps.lifecycle_status_label || '').toLowerCase();
+                    const lc = (ev.extendedProps.lifecycleStatus || ev.extendedProps.lifecycle_status || '').toLowerCase();
+                    const evType = (ev.extendedProps.eventType || '').toLowerCase();
+
+                    const matchQ = !q || name.includes(q) || room.includes(q) || type.includes(q) || pic.includes(q) || lcLabel.includes(q);
+                    const matchSt = !st || lc === st;
+                    const matchTp = !tp || evType === tp;
+
+                    return matchQ && matchSt && matchTp;
+                });
+
+                const isFiltered = Boolean(q || st || tp);
+                subtitle.textContent = isFiltered
+                    ? `${filtered.length} dari ${allSelectedEvents.length} agenda cocok dengan filter`
+                    : `${allSelectedEvents.length} agenda tersimpan pada tanggal ini`;
+
+                if (filtered.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'agenda-dialog-empty';
+                    empty.textContent = 'Tidak ada agenda yang cocok dengan pencarian atau filter.';
+                    list.append(empty);
+                    paginationContainer.style.display = 'none';
+                    return;
+                }
+
+                paginationContainer.style.display = 'flex';
+                const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+                if (currentPage > totalPages) currentPage = totalPages;
+                if (currentPage < 1) currentPage = 1;
+
+                const startIdx = (currentPage - 1) * pageSize;
+                const endIdx = Math.min(startIdx + pageSize, filtered.length);
+                const pagedItems = filtered.slice(startIdx, endIdx);
+
+                pagedItems.forEach((event) => {
                     const item = document.createElement('button');
                     item.type = 'button';
                     item.className = 'agenda-dialog-item';
@@ -1553,31 +2075,40 @@
                     name.className = 'agenda-dialog-item-title';
                     name.textContent = event.extendedProps.eventName || event.title;
 
+                    const badgesDiv = document.createElement('div');
+                    badgesDiv.className = 'agenda-dialog-item-badges';
+
                     const typeBadge = document.createElement('span');
                     typeBadge.className = 'agenda-dialog-item-badge';
                     typeBadge.textContent = eventTypeLabels[event.extendedProps.eventType] || 'Agenda';
-                    topRow.append(name, typeBadge);
+                    badgesDiv.append(typeBadge);
 
-                    const lc = event.extendedProps.lifecycleStatus || event.extendedProps.lifecycle_status || '';
+                    const lc = (event.extendedProps.lifecycleStatus || event.extendedProps.lifecycle_status || '').toLowerCase();
                     const lcLabel = event.extendedProps.lifecycleStatusLabel || event.extendedProps.lifecycle_status_label || '';
                     if (lcLabel) {
                         const statusBadge = document.createElement('span');
                         let badgeBg = '#ecfdf5';
                         let badgeColor = '#047857';
                         let badgeBorder = '#a7f3d0';
-                        if (lc === 'completed') {
+                        if (lc === 'in_progress') {
+                            badgeBg = '#ecfdf5';
+                            badgeColor = '#047857';
+                            badgeBorder = '#6ee7b7';
+                        } else if (lc === 'completed') {
                             badgeBg = '#f0f9ff';
                             badgeColor = '#0369a1';
                             badgeBorder = '#bae6fd';
-                        } else if (lc === 'upcoming') {
+                        } else {
                             badgeBg = '#fffbeb';
                             badgeColor = '#b45309';
                             badgeBorder = '#fde68a';
                         }
-                        statusBadge.style.cssText = `margin-left: 6px; padding: 2px 8px; border-radius: 9999px; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-size: 0.72rem; font-weight: 700; white-space: nowrap;`;
+                        statusBadge.style.cssText = `padding: 2.5px 8px; border-radius: 9999px; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-size: 0.72rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;`;
                         statusBadge.textContent = lcLabel;
-                        topRow.append(statusBadge);
+                        badgesDiv.append(statusBadge);
                     }
+
+                    topRow.append(name, badgesDiv);
 
                     const meta = document.createElement('div');
                     meta.className = 'agenda-dialog-item-meta';
@@ -1590,77 +2121,158 @@
                     actionHint.textContent = 'Klik untuk melihat detail agenda →';
 
                     item.append(topRow, meta, actionHint);
-                    item.addEventListener('click', () => showEventDetails(event, dateString));
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showEventDetails(event, dateString);
+                    });
                     list.append(item);
                 });
-            }
 
-            dialogContent.append(header, list);
+                // Teks Info Paginasi
+                const infoSpan = document.createElement('span');
+                infoSpan.textContent = `Menampilkan ${startIdx + 1}–${endIdx} dari ${filtered.length} agenda`;
+                paginationContainer.append(infoSpan);
 
-            if (wakaAgendaEnabled) {
-                const form = document.createElement('form');
-                form.className = 'school-event-form';
-                const nameLabel = document.createElement('label');
-                nameLabel.textContent = 'Input agenda sekolah';
-                const nameInput = document.createElement('input');
-                nameInput.name = 'event_name';
-                nameInput.placeholder = 'Nama agenda';
-                nameInput.maxLength = 255;
-                nameInput.required = true;
-                nameLabel.append(nameInput);
+                if (totalPages > 1) {
+                    const btnGroup = document.createElement('div');
+                    btnGroup.className = 'agenda-dialog-pagination-btns';
 
-                const typeLabel = document.createElement('label');
-                typeLabel.textContent = 'Jenis agenda';
-                const typeSelect = document.createElement('select');
-                typeSelect.name = 'event_type';
-                typeSelect.required = true;
-                eventTypeOptions.forEach((type) => {
-                    const option = document.createElement('option');
-                    option.value = type.value;
-                    option.textContent = type.label;
-                    typeSelect.append(option);
-                });
-                typeLabel.append(typeSelect);
-
-                const dateInput = document.createElement('input');
-                dateInput.type = 'hidden';
-                dateInput.name = 'date';
-                dateInput.value = dateString;
-                const error = document.createElement('p');
-                error.className = 'school-event-form-error';
-                error.hidden = true;
-                const submit = document.createElement('button');
-                submit.type = 'submit';
-                submit.textContent = 'Simpan agenda sekolah';
-                form.append(nameLabel, typeLabel, dateInput, error, submit);
-                form.addEventListener('submit', async (submitEvent) => {
-                    submitEvent.preventDefault();
-                    error.hidden = true;
-                    submit.disabled = true;
-                    try {
-                        const response = await fetch(schoolEventStoreUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            },
-                            body: new FormData(form)
-                        });
-                        const result = await response.json();
-                        if (!response.ok) {
-                            throw new Error(result.message || Object.values(result.errors || {}).flat()[0] || 'Agenda tidak dapat disimpan.');
+                    const prevBtn = document.createElement('button');
+                    prevBtn.type = 'button';
+                    prevBtn.className = 'agenda-dialog-page-btn';
+                    prevBtn.textContent = '← Prev';
+                    prevBtn.disabled = currentPage === 1;
+                    prevBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (currentPage > 1) {
+                            currentPage--;
+                            renderModalEvents();
                         }
-                        calendar.addEvent(result);
-                        showDateAgendas(dateString);
-                    } catch (requestError) {
-                        error.textContent = requestError.message || 'Terjadi kesalahan saat menyimpan agenda.';
-                        error.hidden = false;
-                    } finally {
-                        submit.disabled = false;
+                    });
+                    btnGroup.append(prevBtn);
+
+                    for (let p = 1; p <= totalPages; p++) {
+                        const pageBtn = document.createElement('button');
+                        pageBtn.type = 'button';
+                        pageBtn.className = `agenda-dialog-page-btn ${p === currentPage ? 'active' : ''}`;
+                        pageBtn.textContent = String(p);
+                        pageBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            currentPage = p;
+                            renderModalEvents();
+                        });
+                        btnGroup.append(pageBtn);
                     }
-                });
-                dialogContent.append(form);
+
+                    const nextBtn = document.createElement('button');
+                    nextBtn.type = 'button';
+                    nextBtn.className = 'agenda-dialog-page-btn';
+                    nextBtn.textContent = 'Next →';
+                    nextBtn.disabled = currentPage === totalPages;
+                    nextBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (currentPage < totalPages) {
+                            currentPage++;
+                            renderModalEvents();
+                        }
+                    });
+                    btnGroup.append(nextBtn);
+
+                    paginationContainer.append(btnGroup);
+                }
             }
+
+            searchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value;
+                currentPage = 1;
+                renderModalEvents();
+            });
+
+            statusSelect.addEventListener('change', (e) => {
+                statusFilter = e.target.value;
+                currentPage = 1;
+                renderModalEvents();
+            });
+
+            typeSelect.addEventListener('change', (e) => {
+                typeFilter = e.target.value;
+                currentPage = 1;
+                renderModalEvents();
+            });
+
+            renderModalEvents();
+            dialogContent.append(header, bodyContainer);
+
+            appendWakaForm(dialogContent, dateString);
+        }
+
+        function appendWakaForm(container, dateString) {
+            if (!wakaAgendaEnabled) return;
+            const form = document.createElement('form');
+            form.className = 'school-event-form';
+            const nameLabel = document.createElement('label');
+            nameLabel.textContent = 'Input agenda sekolah';
+            const nameInput = document.createElement('input');
+            nameInput.name = 'event_name';
+            nameInput.placeholder = 'Nama agenda';
+            nameInput.maxLength = 255;
+            nameInput.required = true;
+            nameLabel.append(nameInput);
+
+            const typeLabel = document.createElement('label');
+            typeLabel.textContent = 'Jenis agenda';
+            const typeSelect = document.createElement('select');
+            typeSelect.name = 'event_type';
+            typeSelect.required = true;
+            eventTypeOptions.forEach((type) => {
+                const option = document.createElement('option');
+                option.value = type.value;
+                option.textContent = type.label;
+                typeSelect.append(option);
+            });
+            typeLabel.append(typeSelect);
+
+            const dateInput = document.createElement('input');
+            dateInput.type = 'hidden';
+            dateInput.name = 'date';
+            dateInput.value = dateString;
+            const error = document.createElement('p');
+            error.className = 'school-event-form-error';
+            error.hidden = true;
+            const submit = document.createElement('button');
+            submit.type = 'submit';
+            submit.textContent = 'Simpan agenda sekolah';
+            form.append(nameLabel, typeLabel, dateInput, error, submit);
+            form.addEventListener('submit', async (submitEvent) => {
+                submitEvent.preventDefault();
+                error.hidden = true;
+                submit.disabled = true;
+                try {
+                    const response = await fetch(schoolEventStoreUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: new FormData(form)
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.message || Object.values(result.errors || {}).flat()[0] || 'Agenda tidak dapat disimpan.');
+                    }
+                    calendar.addEvent(result);
+                    showDateAgendas(dateString);
+                } catch (requestError) {
+                    error.textContent = requestError.message || 'Terjadi kesalahan saat menyimpan agenda.';
+                    error.hidden = false;
+                } finally {
+                    submit.disabled = false;
+                }
+            });
+            container.append(form);
         }
 
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -1682,8 +2294,18 @@
             dayMaxEventRows: false,
             eventDisplay: 'block',
             displayEventTime: false, // Hanya menampilkan nama agenda saja di badge kalender
-            eventOrder: (a, b) => (b.extendedProps.createdAt || '').localeCompare(a.extendedProps.createdAt || ''),
+            eventOrder: compareEventsByLifecycle,
             eventOrderStrict: true,
+            eventDidMount: function(info) {
+                if (info.event.extendedProps && info.event.extendedProps.isHoliday) {
+                    const titleEl = info.el.querySelector('.fc-event-title');
+                    if (titleEl && !titleEl.textContent.trim().startsWith('🚩')) {
+                        titleEl.prepend('🚩 ');
+                    }
+                    info.el.style.fontWeight = '600';
+                    info.el.style.fontSize = '0.78rem';
+                }
+            },
             dayCellClassNames: (info) => [0, 6].includes(info.date.getDay()) ? ['calendar-weekend-day'] : [],
             dayHeaderClassNames: (info) => [0, 6].includes(info.date.getDay()) ? ['calendar-weekend-header'] : [],
             dateClick: (info) => {
@@ -1754,15 +2376,14 @@
             
             // Pop-up saat agenda di kalender diklik: menampilkan semua agenda pada tanggal tersebut
             eventClick: function(info) {
-                if (info.event.extendedProps.isHoliday) {
-                    return;
-                }
                 const clickedCell = info.el.closest('.fc-daygrid-day') || info.el.closest('.fc-timegrid-col');
                 const clickedDate = (clickedCell && clickedCell.dataset.date)
                     ? clickedCell.dataset.date
-                    : info.event.startStr.slice(0, 10);
-                showDateAgendas(clickedDate);
-                dialog.showModal();
+                    : (info.event.startStr ? info.event.startStr.slice(0, 10) : '');
+                if (clickedDate) {
+                    showDateAgendas(clickedDate);
+                    dialog.showModal();
+                }
             }
         });
 
@@ -1842,6 +2463,9 @@
 
         // Klik di luar dialog (backdrop) untuk menutup modal
         dialog.addEventListener('click', function(e) {
+            // FIX: Hanya tangani klik yang langsung mengenai elemen <dialog> (backdrop luar)
+            if (e.target !== dialog) return;
+
             const rect = dialog.getBoundingClientRect();
             const isInDialog = (
                 rect.top <= e.clientY &&
@@ -1854,41 +2478,80 @@
             }
         });
 
-        // Paginasi Agenda Sekolah di Kolom Kanan (Tampilkan 4 data per halaman agar sejajar dengan kalender)
+        // Cegah klik di dalam panel dialog merambat ke dialog backdrop
+        dialogContent.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+
+        // Paginasi & Filter Agenda Sekolah di Kolom Kanan / Bawah Kalender (5 data per halaman)
         function initAgendaPagination() {
             const container = document.getElementById('agenda-cards-container');
             if (!container) return;
 
-            const cards = container.querySelectorAll('.agenda-card-item');
-            const totalCards = cards.length;
-            const itemsPerPage = 4;
-            let currentPage = 1;
-            const totalPages = Math.ceil(totalCards / itemsPerPage) || 1;
-
+            const allCards = Array.from(container.querySelectorAll('.agenda-card-item'));
             const paginationBar = document.getElementById('agenda-pagination-bar');
             const infoText = document.getElementById('agenda-pagination-info');
             const prevBtn = document.getElementById('agenda-pagination-prev');
             const nextBtn = document.getElementById('agenda-pagination-next');
             const pagesContainer = document.getElementById('agenda-pagination-pages');
+            const badgeCount = document.getElementById('side-agenda-count-badge');
+            const emptySearch = document.getElementById('side-agenda-empty-search');
 
-            if (!paginationBar) return;
+            const searchInput = document.getElementById('side-agenda-search');
+            const statusSelect = document.getElementById('side-agenda-filter-status');
+            const typeSelect = document.getElementById('side-agenda-filter-type');
 
-            if (totalCards === 0) {
-                paginationBar.style.display = 'none';
-                return;
-            }
+            const itemsPerPage = 5;
+            let currentPage = 1;
+            let matchedCards = allCards;
 
-            function renderPage(page) {
+            function applyFiltersAndRender(page = 1) {
+                const q = (searchInput?.value || '').toLowerCase().trim();
+                const st = (statusSelect?.value || '').toLowerCase().trim();
+                const tp = (typeSelect?.value || '').toLowerCase().trim();
+
+                matchedCards = allCards.filter(card => {
+                    const title = card.dataset.title || '';
+                    const room = card.dataset.room || '';
+                    const pic = card.dataset.pic || '';
+                    const cardType = card.dataset.type || '';
+                    const cardStatus = card.dataset.status || '';
+
+                    const matchQ = !q || title.includes(q) || room.includes(q) || pic.includes(q) || cardType.includes(q);
+                    const matchSt = !st || cardStatus === st;
+                    const matchTp = !tp || cardType === tp;
+
+                    return matchQ && matchSt && matchTp;
+                });
+
+                if (badgeCount) {
+                    badgeCount.textContent = (q || st || tp)
+                        ? `${matchedCards.length} dari ${allCards.length} Agenda`
+                        : `${allCards.length} Agenda`;
+                }
+
+                allCards.forEach(c => c.style.display = 'none');
+
+                if (matchedCards.length === 0) {
+                    if (emptySearch) emptySearch.style.display = 'block';
+                    if (paginationBar) paginationBar.style.display = 'none';
+                    return;
+                }
+
+                if (emptySearch) emptySearch.style.display = 'none';
+                if (paginationBar) paginationBar.style.display = 'flex';
+
+                const totalPages = Math.ceil(matchedCards.length / itemsPerPage) || 1;
                 currentPage = Math.max(1, Math.min(page, totalPages));
                 const start = (currentPage - 1) * itemsPerPage;
-                const end = Math.min(start + itemsPerPage, totalCards);
+                const end = Math.min(start + itemsPerPage, matchedCards.length);
 
-                cards.forEach((card, index) => {
+                matchedCards.forEach((card, index) => {
                     card.style.display = (index >= start && index < end) ? 'flex' : 'none';
                 });
 
                 if (infoText) {
-                    infoText.textContent = `${start + 1}–${end} dari ${totalCards}`;
+                    infoText.textContent = `Menampilkan ${start + 1}–${end} dari ${matchedCards.length}`;
                 }
 
                 if (prevBtn) {
@@ -1899,7 +2562,7 @@
                 }
 
                 if (pagesContainer) {
-                    pagesContainer.innerHTML = '';
+                    pagesContainer.replaceChildren();
                     if (totalPages > 1) {
                         for (let i = 1; i <= totalPages; i++) {
                             const btn = document.createElement('button');
@@ -1908,8 +2571,9 @@
                             btn.textContent = i;
                             btn.setAttribute('aria-label', `Halaman ${i}`);
                             btn.addEventListener('click', (e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
-                                renderPage(i);
+                                applyFiltersAndRender(i);
                             });
                             pagesContainer.appendChild(btn);
                         }
@@ -1917,21 +2581,44 @@
                 }
             }
 
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    currentPage = 1;
+                    applyFiltersAndRender(1);
+                });
+            }
+
+            if (statusSelect) {
+                statusSelect.addEventListener('change', () => {
+                    currentPage = 1;
+                    applyFiltersAndRender(1);
+                });
+            }
+
+            if (typeSelect) {
+                typeSelect.addEventListener('change', () => {
+                    currentPage = 1;
+                    applyFiltersAndRender(1);
+                });
+            }
+
             if (prevBtn) {
                 prevBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
-                    if (currentPage > 1) renderPage(currentPage - 1);
+                    if (currentPage > 1) applyFiltersAndRender(currentPage - 1);
                 });
             }
 
             if (nextBtn) {
                 nextBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
-                    if (currentPage < totalPages) renderPage(currentPage + 1);
+                    applyFiltersAndRender(currentPage + 1);
                 });
             }
 
-            renderPage(1);
+            applyFiltersAndRender(1);
         }
 
         initAgendaPagination();
@@ -1939,17 +2626,35 @@
         function applyDayColors() {
             calendarEl.querySelectorAll('.fc-daygrid-day[data-date]').forEach((cell) => {
                 const dateString = cell.dataset.date;
-                const colors = [...new Set(calendar.getEvents()
-                    .filter((event) => eventOccursOnDate(event, dateString))
+                const cellEvents = calendar.getEvents().filter((event) => eventOccursOnDate(event, dateString));
+                const holidayEvent = cellEvents.find((event) => event.extendedProps && event.extendedProps.isHoliday);
+
+                // Tanggal Merah untuk Hari Libur Nasional
+                if (holidayEvent) {
+                    cell.classList.add('calendar-holiday-day');
+                    const numEl = cell.querySelector('.fc-daygrid-day-number');
+                    if (numEl && !cell.classList.contains('fc-day-today')) {
+                        numEl.style.setProperty('color', '#dc2626', 'important');
+                        numEl.style.setProperty('font-weight', '700', 'important');
+                    }
+                }
+
+                const colors = [...new Set(cellEvents
+                    .filter((event) => !(event.extendedProps && event.extendedProps.isHoliday))
                     .map((event) => event.backgroundColor)
                     .filter(Boolean))];
                 const frame = cell.querySelector('.fc-daygrid-day-frame');
                 if (!frame) return;
-                frame.style.background = colors.length === 0
-                    ? ''
-                    : colors.length === 1
-                        ? `color-mix(in srgb, ${colors[0]} 16%, white)`
-                        : `linear-gradient(135deg, ${colors.map((color, index) => `color-mix(in srgb, ${color} 16%, white) ${index * 100 / colors.length}% ${(index + 1) * 100 / colors.length}%`).join(', ')})`;
+
+                if (colors.length === 0 && holidayEvent) {
+                    frame.style.background = 'rgba(254, 226, 226, 0.35)';
+                } else if (colors.length === 1) {
+                    frame.style.background = `color-mix(in srgb, ${colors[0]} 16%, white)`;
+                } else if (colors.length > 1) {
+                    frame.style.background = `linear-gradient(135deg, ${colors.map((color, index) => `color-mix(in srgb, ${color} 16%, white) ${index * 100 / colors.length}% ${(index + 1) * 100 / colors.length}%`).join(', ')})`;
+                } else {
+                    frame.style.background = '';
+                }
             });
         }
     });

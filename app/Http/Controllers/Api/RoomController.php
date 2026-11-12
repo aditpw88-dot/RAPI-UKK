@@ -14,8 +14,7 @@ class RoomController extends Controller
     public function index(): JsonResponse
     {
         $rooms = Room::query()
-            ->where('is_active', 'Aktif')
-            ->with('pic:id,fullname')
+            ->with(['pic:id,fullname,phone_number', 'pics:id,fullname,phone_number'])
             ->get()
             ->sort(fn ($a, $b) => Room::compareRoomNames($a->room_name, $b->room_name))
             ->values();
@@ -41,17 +40,15 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Ruangan berhasil ditambahkan.',
-            'data' => $room->load('pic:id,fullname'),
+            'data' => $room->load('pic:id,fullname,phone_number'),
         ], 201);
     }
 
     public function show(Room $room): JsonResponse
     {
-        abort_unless($room->is_active === true, 404);
-
         return response()->json([
             'success' => true,
-            'data' => $room->load('pic:id,fullname'),
+            'data' => $room->load('pic:id,fullname,phone_number'),
         ]);
     }
 
@@ -63,6 +60,7 @@ class RoomController extends Controller
             'capacity' => ['sometimes', 'required', 'integer', 'min:1'],
             'pic_id' => ['sometimes', 'required', 'integer', 'exists:users,id'],
             'is_active' => ['sometimes', 'required', 'boolean'],
+            'maintenance_note' => ['nullable', 'string', 'max:1000'],
         ]);
 
         if (array_key_exists('pic_id', $validated)) {
@@ -78,7 +76,82 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Ruangan berhasil diperbarui.',
-            'data' => $room->fresh()->load('pic:id,fullname'),
+            'data' => $room->fresh()->load('pic:id,fullname,phone_number'),
+        ]);
+    }
+
+    public function updateStatus(Request $request, Room $room): JsonResponse
+    {
+        $user = $request->user();
+        $roleName = strtolower($user->role?->role_name ?? '');
+        $isAdmin = str_contains($roleName, 'admin') || str_contains($roleName, 'waka');
+        $isPic = str_contains($roleName, 'pic');
+
+        $hasSpecificRooms = $user->rooms()->exists();
+        $canManage = $isAdmin || ($isPic && (
+            ! $hasSpecificRooms
+            || (int) $room->pic_id === (int) $user->id
+            || $user->rooms()->where('rooms.id', $room->id)->exists()
+        ));
+
+        abort_unless($canManage, 403, 'Anda tidak memiliki akses untuk mengubah status ruangan ini.');
+
+        $validated = $request->validate([
+            'is_active' => ['required'],
+            'maintenance_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $rawActive = $validated['is_active'];
+        $isActive = in_array($rawActive, ['Aktif', '1', 1, true, 'true'], true);
+        $note = trim((string) ($validated['maintenance_note'] ?? ''));
+
+        if (! $isActive) {
+            if ($note === '') {
+                throw ValidationException::withMessages([
+                    'maintenance_note' => ['Mohon isi catatan perbaikan/alasan saat menonaktifkan ruangan.'],
+                ]);
+            }
+
+            $ongoingEvent = $room->getOngoingEvent();
+            if ($ongoingEvent) {
+                $borrower = $ongoingEvent->pic;
+                $borrowerName = $borrower?->fullname ?? $borrower?->name ?? 'Peminjam Ruangan';
+                $borrowerPhone = $borrower?->phone_number;
+                $eventTime = substr($ongoingEvent->start_time, 0, 5) . ' - ' . substr($ongoingEvent->end_time, 0, 5);
+                $picName = $user->fullname ?? 'PIC Ruang';
+
+                $waMessage = "Halo Bapak/Ibu {$borrowerName}, saya {$picName} (PIC {$room->room_name}). "
+                    . "Mohon maaf, ruangan {$room->room_name} rencananya akan dinonaktifkan (perbaikan/renovasi), "
+                    . "namun saat ini sedang berlangsung agenda \"{$ongoingEvent->event_name}\" ({$eventTime} WIB). "
+                    . "Saya ingin berkoordinasi terlebih dahulu dengan Anda mengenai penggunaan ruangan tersebut. Terima kasih.";
+
+                $whatsAppUrl = \App\Support\WhatsAppLink::make($borrowerPhone, $waMessage);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Ruangan {$room->room_name} tidak dapat dinonaktifkan karena sedang berlangsung agenda \"{$ongoingEvent->event_name}\" oleh {$borrowerName} ({$eventTime} WIB). Silakan berkoordinasi terlebih dahulu.",
+                    'ongoing_conflict' => [
+                        'room_name' => $room->room_name,
+                        'event_name' => $ongoingEvent->event_name,
+                        'borrower_name' => $borrowerName,
+                        'borrower_phone' => $borrowerPhone,
+                        'event_time' => $eventTime,
+                        'whatsapp_url' => $whatsAppUrl,
+                    ],
+                    'whatsapp_url' => $whatsAppUrl,
+                ], 422);
+            }
+        }
+
+        $room->update([
+            'is_active' => $isActive ? 'Aktif' : 'Tidak aktif',
+            'maintenance_note' => $isActive ? null : $note,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status ruangan berhasil diperbarui.',
+            'data' => $room->fresh()->load('pic:id,fullname,phone_number'),
         ]);
     }
 

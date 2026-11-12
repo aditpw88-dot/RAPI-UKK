@@ -17,7 +17,7 @@ class CalendarTest extends TestCase
 
     public function test_national_holidays_are_loaded_and_limited_to_the_calendar_range(): void
     {
-        Cache::forget('indonesia-holidays');
+        Cache::forget('indonesia-holidays-remote');
         Http::fake([
             'raw.githubusercontent.com/*' => Http::response([
                 '2026-03-18' => ['summary' => 'Cuti Bersama Nyepi'],
@@ -34,6 +34,21 @@ class CalendarTest extends TestCase
             ->assertJsonCount(2)
             ->assertJsonPath('0.title', 'Cuti Bersama Nyepi')
             ->assertJsonPath('1.extendedProps.isHoliday', true);
+    }
+
+    public function test_national_calendar_includes_natal_and_national_holidays_without_external_api(): void
+    {
+        Cache::forget('indonesia-holidays-remote');
+
+        $response = $this->getJson('/calendar/holidays?start=2026-12-01&end=2026-12-31');
+
+        $response
+            ->assertOk()
+            ->assertJsonFragment([
+                'title' => 'Hari Raya Natal',
+                'start' => '2026-12-25',
+                'allDay' => true,
+            ]);
     }
 
     public function test_calendar_event_colors_follow_the_selected_event_type(): void
@@ -63,12 +78,13 @@ class CalendarTest extends TestCase
             'pic_id' => $pic->id,
             'is_active' => 'Aktif',
         ]);
+        $tomorrow = now()->addDay()->toDateString();
         $event = Event::create([
             'room_id' => $room->id,
             'event_name' => 'Rapat Koordinasi',
             'event_type' => 'akademik',
-            'date' => '2026-11-10',
-            'end_date' => '2026-11-10',
+            'date' => $tomorrow,
+            'end_date' => $tomorrow,
             'start_time' => '09:30',
             'end_time' => '10:15',
             'status' => 'approved',
@@ -81,7 +97,7 @@ class CalendarTest extends TestCase
                 ->assertSee('"title":"Rapat Koordinasi"', false)
                 ->assertDontSee('"title":"Rapat Koordinasi (Ruang Detail Agenda)"', false)
                 ->assertSee('"roomName":"Ruang Detail Agenda"', false)
-                ->assertSee('dayMaxEvents: 3', false)
+                ->assertSee('dayMaxEvents: false', false)
                 ->assertSee('showDateAgendas(clickedDate)', false)
                 ->assertSee('showEventDetails(event, dateString)', false);
         }
@@ -122,5 +138,105 @@ class CalendarTest extends TestCase
             ->assertSee('Upacara Sekolah')
             ->assertSee('Seluruh sekolah')
             ->assertSee('Sepanjang hari');
+    }
+
+    public function test_completed_agenda_disappears_from_student_calendar_grid_and_sidebar_and_remains_in_admin_loan_report(): void
+    {
+        $adminRole = Role::firstOrCreate(['role_name' => 'Admin']);
+        $picRole = Role::firstOrCreate(['role_name' => 'PIC Ruang']);
+
+        $admin = User::create([
+            'username' => 'admin-cal-24h',
+            'fullname' => 'Admin Calendar 24h',
+            'email' => 'admin-cal-24h@example.com',
+            'password' => 'password',
+            'role_id' => $adminRole->id,
+        ]);
+
+        $pic = User::create([
+            'username' => 'pic-cal-24h',
+            'fullname' => 'PIC Calendar 24h',
+            'email' => 'pic-cal-24h@example.com',
+            'password' => 'password',
+            'role_id' => $picRole->id,
+        ]);
+
+        $room = Room::create([
+            'room_name' => 'Lab Multimedia Utama',
+            'capacity' => 30,
+            'pic_id' => $pic->id,
+            'is_active' => 'Aktif',
+        ]);
+
+        $now = now();
+
+        // 1. Agenda completed > 24 hours ago (26 hours ago)
+        $expiredDt = $now->copy()->subHours(26);
+        $expiredEvent = Event::create([
+            'room_id' => $room->id,
+            'pic_id' => $pic->id,
+            'event_name' => 'Agenda Selesai Lebih 24 Jam',
+            'event_type' => 'rapat',
+            'date' => $expiredDt->toDateString(),
+            'end_date' => $expiredDt->toDateString(),
+            'start_time' => $expiredDt->copy()->subHour()->format('H:i:s'),
+            'end_time' => $expiredDt->format('H:i:s'),
+            'status' => 'approved',
+        ]);
+        $expiredEvent->rooms()->sync([$room->id]);
+
+        // 2. Agenda completed di jam-jam sebelumnya (2 hours ago)
+        $recentDt = $now->copy()->subHours(2);
+        $recentEvent = Event::create([
+            'room_id' => $room->id,
+            'pic_id' => $pic->id,
+            'event_name' => 'Agenda Baru Selesai 2 Jam Lalu',
+            'event_type' => 'akademik',
+            'date' => $recentDt->toDateString(),
+            'end_date' => $recentDt->toDateString(),
+            'start_time' => $recentDt->copy()->subHour()->format('H:i:s'),
+            'end_time' => $recentDt->format('H:i:s'),
+            'status' => 'approved',
+        ]);
+        $recentEvent->rooms()->sync([$room->id]);
+
+        // 3. Upcoming Agenda (tomorrow)
+        $upcomingDt = $now->copy()->addDay();
+        $upcomingEvent = Event::create([
+            'room_id' => $room->id,
+            'pic_id' => $pic->id,
+            'event_name' => 'Agenda Besok Pagi',
+            'event_type' => 'kegiatan',
+            'date' => $upcomingDt->toDateString(),
+            'end_date' => $upcomingDt->toDateString(),
+            'start_time' => '08:00:00',
+            'end_time' => '10:00:00',
+            'status' => 'approved',
+        ]);
+        $upcomingEvent->rooms()->sync([$room->id]);
+
+        // Check Student Calendar (/) and Internal Calendar (/calendar)
+        foreach (['/', '/calendar'] as $calendarUrl) {
+            $response = $this->get($calendarUrl)->assertOk();
+            // Agenda yang sudah selesai di jam-jam sebelumnya & lebih dari 24 jam hilang dari kalender
+            $response->assertDontSee('"title":"Agenda Selesai Lebih 24 Jam"', false);
+            $response->assertDontSee('data-title="agenda selesai lebih 24 jam"', false);
+            $response->assertDontSee('"title":"Agenda Baru Selesai 2 Jam Lalu"', false);
+            $response->assertDontSee('data-title="agenda baru selesai 2 jam lalu"', false);
+
+            // Agenda yang belum terlaksana tetap muncul di kalender dan sidebar
+            $response->assertSee('"title":"Agenda Besok Pagi"', false);
+            $response->assertSee('data-title="agenda besok pagi"', false);
+        }
+
+        // Check Admin Loan Report (Laporan Peminjaman) includes the completed agenda
+        $this->actingAs($admin)
+            ->get(route('reports.monthly', [
+                'period_type' => 'daily',
+                'period_value' => $expiredDt->toDateString(),
+            ]))
+            ->assertOk()
+            ->assertSee('Agenda Selesai Lebih 24 Jam')
+            ->assertSee('Sudah Terlaksana');
     }
 }

@@ -15,6 +15,7 @@ class Room extends Model
         'capacity',
         'pic_id',
         'is_active',
+        'maintenance_note',
     ];
 
     protected static function booted(): void
@@ -57,9 +58,97 @@ class Room extends Model
         return $pics->pluck('fullname')->join(', ');
     }
 
+    public function getPicPhoneAttribute(): ?string
+    {
+        $phone = $this->pic?->phone_number;
+        if (! $phone) {
+            $firstPicWithPhone = $this->all_pics->first(fn ($u) => ! empty($u->phone_number));
+            $phone = $firstPicWithPhone?->phone_number;
+        }
+        return $phone;
+    }
+
+    public function getPicWhatsappUrlAttribute(): ?string
+    {
+        $phone = $this->pic_phone;
+        if (! $phone) {
+            return null;
+        }
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+        if (! $cleanPhone) {
+            return null;
+        }
+        if (str_starts_with($cleanPhone, '0')) {
+            $cleanPhone = '62' . substr($cleanPhone, 1);
+        }
+        $msg = rawurlencode("Halo Bapak/Ibu PIC {$this->room_name}, saya ingin menanyakan perihal ruangan {$this->room_name} yang sedang dalam perbaikan.");
+        return "https://wa.me/{$cleanPhone}?text={$msg}";
+    }
+
     public function getIsActiveAttribute(string $value): bool
     {
         return $value === 'Aktif' || $value === '1';
+    }
+
+    public function getCurrentEventAttribute(): ?Event
+    {
+        if (array_key_exists('current_event', $this->attributes)) {
+            return $this->attributes['current_event'];
+        }
+
+        if (! $this->is_active) {
+            return null;
+        }
+
+        $now = now();
+        $today = $now->toDateString();
+        $currentTime = $now->toTimeString();
+
+        return Event::forRooms([$this->id])
+            ->where('status', 'approved')
+            ->whereNull('completed_at')
+            ->where(function ($q) use ($today) {
+                $q->where('date', '<=', $today)
+                    ->where(function ($sub) use ($today) {
+                        $sub->whereNull('end_date')
+                            ->orWhere('end_date', '>=', $today);
+                    });
+            })
+            ->where('start_time', '<=', $currentTime)
+            ->where('end_time', '>=', $currentTime)
+            ->with(['pic'])
+            ->first();
+    }
+
+    public function getOngoingEvent(): ?Event
+    {
+        if (array_key_exists('current_event', $this->attributes) && $this->attributes['current_event'] instanceof Event) {
+            return $this->attributes['current_event'];
+        }
+
+        return Event::forRooms([$this->id])
+            ->approvedInProgress()
+            ->with(['pic'])
+            ->first();
+    }
+
+    public function getIsAvailableAttribute(): bool
+    {
+        if (! $this->is_active) {
+            return false;
+        }
+
+        return $this->current_event === null;
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return $this->is_available ? 'Tersedia' : 'Tidak tersedia';
+    }
+
+    public function getConditionLabelAttribute(): string
+    {
+        return $this->is_active ? 'Aktif' : 'Tidak aktif';
     }
 
     public static function sortRooms(iterable $rooms): Collection
@@ -140,5 +229,87 @@ class Room extends Model
         }
 
         return strnatcasecmp($nameA, $nameB);
+    }
+
+    public static function calculateDistance(Room $a, Room $b): int
+    {
+        if ($a->id === $b->id) {
+            return 0;
+        }
+
+        $nameA = trim(strtolower($a->room_name));
+        $nameB = trim(strtolower($b->room_name));
+
+        if ($nameA === $nameB) {
+            return 0;
+        }
+
+        // Kategori sama: Lab (misal Lab 1 ke Lab 2 berjarak 1)
+        $isLabA = preg_match('/^lab\s*(\d+)/i', $nameA, $matchA);
+        $isLabB = preg_match('/^lab\s*(\d+)/i', $nameB, $matchB);
+        if ($isLabA && $isLabB) {
+            return abs((int) $matchA[1] - (int) $matchB[1]);
+        }
+
+        // Kategori sama: Ruang Kelas / Kelas
+        $isClassA = preg_match('/^(?:ruang\s+kelas|ruang|kelas)\s*(\d+)/i', $nameA, $matchClassA);
+        $isClassB = preg_match('/^(?:ruang\s+kelas|ruang|kelas)\s*(\d+)/i', $nameB, $matchClassB);
+        if ($isClassA && $isClassB) {
+            return abs((int) $matchClassA[1] - (int) $matchClassB[1]);
+        }
+
+        // Ruang Wijaya & DAK
+        $isHallA = str_contains($nameA, 'wijaya') || str_contains($nameA, 'dak');
+        $isHallB = str_contains($nameB, 'wijaya') || str_contains($nameB, 'dak');
+        if ($isHallA && $isHallB) {
+            return 5;
+        }
+
+        // Antar tipe ruangan berbeda, hitung selisih jarak fallback
+        return 1000 + abs((int) $a->id - (int) $b->id);
+    }
+
+    public static function findNearestAvailableRoom(
+        Room $sourceRoom,
+        string $startDate,
+        string $endDate,
+        string $startTime,
+        string $endTime,
+        array $excludeRoomIds = []
+    ): ?Room {
+        $candidateRooms = self::where('is_active', 'Aktif')
+            ->whereNotIn('id', array_unique(array_merge([$sourceRoom->id], $excludeRoomIds)))
+            ->get();
+
+        if ($candidateRooms->isEmpty()) {
+            return null;
+        }
+
+        $candidateIds = $candidateRooms->pluck('id')->all();
+
+        // Cari agenda yang bentrok pada jadwal tersebut
+        $overlappingEvents = Event::forRooms($candidateIds)
+            ->where(function ($query) {
+                $query->where('status', 'pending')
+                    ->orWhere(fn ($q) => $q->where('status', 'approved')->whereNull('completed_at'));
+            })
+            ->overlappingSchedule($startDate, $endDate, $startTime, $endTime)
+            ->with('rooms')
+            ->get();
+
+        $busyRoomIds = [];
+        foreach ($overlappingEvents as $ev) {
+            foreach ($ev->reservedRoomIds() as $rId) {
+                $busyRoomIds[(int) $rId] = true;
+            }
+        }
+
+        $availableRooms = $candidateRooms->filter(fn (Room $r) => ! isset($busyRoomIds[(int) $r->id]));
+
+        if ($availableRooms->isEmpty()) {
+            return null;
+        }
+
+        return $availableRooms->sortBy(fn (Room $candidate) => self::calculateDistance($sourceRoom, $candidate))->first();
     }
 }

@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
                 'fullname' => 'Guru Organisasi',
                 'email' => 'guru@sekolah.sch.id',
                 'password' => Hash::make('password123'),
-                'phone_number' => '081234567891',
+                'phone_number' => '083115722144',
             ]
         );
 

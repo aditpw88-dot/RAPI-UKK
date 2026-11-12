@@ -38,6 +38,7 @@ class MonthlyReportTest extends TestCase
             ->assertDontSee('Agenda 2026-09-30')
             ->assertDontSee('Lampu rusak')
             ->assertSee('Laporan Peminjaman')
+            ->assertSee('Sesi 3 - Sesi 4')
             ->assertSee(route('reports.monthly.csv', ['period_type' => 'monthly', 'period_value' => '2026-10']))
             ->assertSee(route('reports.monthly.pdf', ['period_type' => 'monthly', 'period_value' => '2026-10']))
             ->assertSee('Cetak / Simpan PDF');
@@ -231,6 +232,153 @@ class MonthlyReportTest extends TestCase
         $this->actingAs($waka)
             ->get(route('reports.monthly', ['period_type' => 'weekly', 'period_value' => '2026-W54']))
             ->assertSessionHasErrors('period_value');
+    }
+
+    public function test_completed_event_older_than_24_hours_disappears_from_admin_events_but_remains_in_monthly_report(): void
+    {
+        $admin = $this->createUser('Admin');
+        $pic = $this->createUser('PIC Ruang');
+        $room = $this->createRoom($pic);
+
+        // Event A: Selesai 3 hari yang lalu (> 24 jam)
+        $oldEvent = Event::create([
+            'room_id' => $room->id,
+            'pic_id' => $pic->id,
+            'event_name' => 'Agenda Jadul Sudah Lewat 24 Jam',
+            'date' => now()->subDays(3)->toDateString(),
+            'end_date' => now()->subDays(3)->toDateString(),
+            'start_time' => '07:15:00',
+            'end_time' => '09:00:00',
+            'status' => 'approved',
+            'completed_at' => now()->subDays(3)->setTime(9, 0),
+        ]);
+
+        // Event B: Selesai 2 jam yang lalu (< 24 jam)
+        $recentEvent = Event::create([
+            'room_id' => $room->id,
+            'pic_id' => $pic->id,
+            'event_name' => 'Agenda Baru Selesai 2 Jam Lalu',
+            'date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+            'start_time' => now()->subHours(3)->format('H:i:s'),
+            'end_time' => now()->subHours(2)->format('H:i:s'),
+            'status' => 'approved',
+            'completed_at' => now()->subHours(2),
+        ]);
+
+        // 1. Cek Manajemen Agenda (admin.events):
+        // Event lama (> 24 jam) HARUS hilang, sedangkan event baru (< 24 jam) tetap terlihat
+        $this->actingAs($admin)
+            ->get(route('admin.events'))
+            ->assertOk()
+            ->assertDontSee('Agenda Jadul Sudah Lewat 24 Jam')
+            ->assertSee('Agenda Baru Selesai 2 Jam Lalu');
+
+        // 2. Cek Laporan Peminjaman (reports.monthly):
+        // Kedua agenda HARUS tetap tercatat di laporan peminjaman
+        $this->actingAs($admin)
+            ->get(route('reports.monthly', [
+                'period_type' => 'monthly',
+                'period_value' => now()->format('Y-m'),
+            ]))
+            ->assertOk()
+            ->assertSee('Agenda Jadul Sudah Lewat 24 Jam')
+            ->assertSee('Agenda Baru Selesai 2 Jam Lalu');
+    }
+
+    public function test_monthly_report_supports_search_and_filters(): void
+    {
+        $admin = $this->createUser('Admin');
+        $pic = $this->createUser('PIC Ruang');
+        $room1 = $this->createRoom($pic);
+        $room2 = Room::create([
+            'room_name' => 'Ruang Laboratorium Khusus',
+            'capacity' => 25,
+            'pic_id' => $pic->id,
+            'is_active' => 'Aktif',
+        ]);
+
+        Event::create([
+            'room_id' => $room1->id,
+            'pic_id' => $pic->id,
+            'event_name' => 'Pelatihan Guru Umum',
+            'date' => now()->toDateString(),
+            'start_time' => '08:00:00',
+            'end_time' => '10:00:00',
+            'status' => 'approved',
+        ]);
+
+        Event::create([
+            'room_id' => $room2->id,
+            'pic_id' => $pic->id,
+            'event_name' => 'Workshop Robotik Khusus',
+            'date' => now()->toDateString(),
+            'start_time' => '10:00:00',
+            'end_time' => '12:00:00',
+            'status' => 'approved',
+        ]);
+
+        // Cari berdasarkan teks 'Robotik'
+        $this->actingAs($admin)
+            ->get(route('reports.monthly', [
+                'period_type' => 'monthly',
+                'period_value' => now()->format('Y-m'),
+                'search' => 'Robotik',
+            ]))
+            ->assertOk()
+            ->assertSee('Workshop Robotik Khusus')
+            ->assertDontSee('Pelatihan Guru Umum');
+
+        // Filter berdasarkan ruangan
+        $this->actingAs($admin)
+            ->get(route('reports.monthly', [
+                'period_type' => 'monthly',
+                'period_value' => now()->format('Y-m'),
+                'room_id' => $room2->id,
+            ]))
+            ->assertOk()
+            ->assertSee('Workshop Robotik Khusus')
+            ->assertDontSee('Pelatihan Guru Umum');
+    }
+
+    public function test_monthly_report_is_sorted_by_newest_created_event(): void
+    {
+        $admin = $this->createUser('Admin');
+        $pic = $this->createUser('PIC Ruang');
+        $room = $this->createRoom($pic);
+
+        $event1 = Event::create([
+            'room_id' => $room->id,
+            'pic_id' => $pic->id,
+            'event_name' => 'Agenda Dibuat Pertama',
+            'date' => '2026-11-20',
+            'start_time' => '08:00:00',
+            'end_time' => '10:00:00',
+            'status' => 'approved',
+            'created_at' => now()->subDays(2),
+        ]);
+
+        $event2 = Event::create([
+            'room_id' => $room->id,
+            'pic_id' => $pic->id,
+            'event_name' => 'Agenda Dibuat Terakhir (Paling Baru)',
+            'date' => '2026-11-05',
+            'start_time' => '10:00:00',
+            'end_time' => '12:00:00',
+            'status' => 'approved',
+            'created_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('reports.monthly', [
+                'period_type' => 'monthly',
+                'period_value' => '2026-11',
+            ]))
+            ->assertOk();
+
+        $events = $response->viewData('events');
+        $this->assertSame($event2->id, $events->first()->id);
+        $this->assertSame($event1->id, $events->last()->id);
     }
 
     private function createUser(string $roleName): User

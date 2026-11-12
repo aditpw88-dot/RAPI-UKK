@@ -3,6 +3,7 @@ import '../../core/api_client.dart';
 import '../../core/session_manager.dart';
 import '../../models/room_model.dart';
 import '../../models/user_model.dart';
+import '../../theme/app_theme.dart';
 import '../complaints/complaints_tab.dart';
 import '../complaints/create_complaint_sheet.dart';
 import '../calendar/public_calendar_screen.dart';
@@ -179,8 +180,6 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildInfoRow('Username', widget.user.username),
             const SizedBox(height: 6),
             _buildInfoRow('Email', widget.user.email),
-            const SizedBox(height: 6),
-            _buildInfoRow('Server API', widget.api.baseUrl),
             const SizedBox(height: 12),
             const Text(
               'Aplikasi mobile ini dikhususkan bagi Guru dan PIC Ruang.',
@@ -280,19 +279,35 @@ class _HomeScreenState extends State<HomeScreen> {
       'Beranda',
       'Daftar Ruangan',
       'Agenda & Jadwal',
-      'Pengaduan Sarpras',
+      'Pengaduan Kerusakan',
       'Kalender Sekolah',
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[_selectedIndex]),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: AppTheme.headerGradient,
+            border: Border(
+              bottom: BorderSide(color: AppTheme.headerBorder, width: 2),
+            ),
+          ),
+        ),
+        iconTheme: IconThemeData(color: AppTheme.brandGold),
+        title: Text(
+          titles[_selectedIndex],
+          style: TextStyle(
+            color: AppTheme.brandGold,
+            fontSize: 16.5,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         actions: [
           InkWell(
             onTap: _showProfileDialog,
             borderRadius: BorderRadius.circular(20),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Row(
                 children: [
                   Container(
@@ -301,22 +316,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: widget.user.roleBadgeColor.withValues(alpha: 0.12),
+                      color: AppTheme.brandAmber.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppTheme.brandAmber.withValues(alpha: 0.5),
+                        width: 1,
+                      ),
                     ),
                     child: Text(
                       widget.user.roleDisplayName,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: widget.user.roleBadgeColor,
+                        color: AppTheme.brandGold,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   CircleAvatar(
                     radius: 16,
-                    backgroundColor: widget.user.roleBadgeColor,
+                    backgroundColor: AppTheme.brandAmber,
                     child: Text(
                       widget.user.displayName.isNotEmpty
                           ? widget.user.displayName[0].toUpperCase()
@@ -339,45 +358,146 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.headerGradient,
+                  border: Border(
+                    bottom: BorderSide(color: AppTheme.headerBorder, width: 2),
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Navigasi',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(
+                              color: AppTheme.brandGold.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(2.5),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(7),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Container(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.brandAmber,
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.school_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'RAPI Sekolah',
+                              style: TextStyle(
+                                color: AppTheme.brandGold,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                            Text(
+                              'Agenda & Fasilitas Ruang',
+                              style: TextStyle(
+                                color: AppTheme.brandGoldSub,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 14),
                     Text(
                       widget.user.displayName,
-                      style: const TextStyle(color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.user.email,
+                      style: const TextStyle(
+                        color: Color(0xFFE7D2BA),
+                        fontSize: 11.5,
+                      ),
                     ),
                   ],
                 ),
               ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: [
+                    ...[
+                      (Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard'),
+                      (Icons.meeting_room_outlined, Icons.meeting_room_rounded, 'Daftar Ruangan'),
+                      (Icons.event_note_outlined, Icons.event_note_rounded, 'Peminjaman & Agenda'),
+                      (Icons.build_circle_outlined, Icons.build_circle_rounded, 'Pengaduan Kerusakan'),
+                      (Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Kalender Sekolah'),
+                    ].asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final (icon, activeIcon, label) = entry.value;
+                      final isSelected = _selectedIndex == index;
+                      return ListTile(
+                        leading: Icon(
+                          isSelected ? activeIcon : icon,
+                          color: isSelected ? AppTheme.brandAmber : AppTheme.textSecondary,
+                        ),
+                        title: Text(
+                          label,
+                          style: TextStyle(
+                            color: isSelected ? AppTheme.brandAmber : AppTheme.textPrimary,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                        selected: isSelected,
+                        selectedTileColor: AppTheme.brandAmberLight,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+                        onTap: () {
+                          _onNavigateToTab(index);
+                          Navigator.pop(context);
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              ),
               const Divider(height: 1),
-              ...[
-                (Icons.dashboard_outlined, 'Dashboard'),
-                (Icons.meeting_room_outlined, 'Daftar Ruangan'),
-                (Icons.event_note_outlined, 'Peminjaman & Agenda'),
-                (Icons.build_outlined, 'Pengaduan Fasilitas'),
-                (Icons.calendar_month_outlined, 'Kalender Interaktif'),
-              ].asMap().entries.map((entry) {
-                final index = entry.key;
-                final (icon, label) = entry.value;
-                return ListTile(
-                  leading: Icon(icon),
-                  title: Text(label),
-                  selected: _selectedIndex == index,
-                  onTap: () {
-                    _onNavigateToTab(index);
-                    Navigator.pop(context);
-                  },
-                );
-              }),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: OutlinedButton.icon(
+                  onPressed: _showProfileDialog,
+                  icon: const Icon(Icons.manage_accounts_outlined, size: 18),
+                  label: const Text('Akun & Info'),
+                ),
+              ),
             ],
           ),
         ),
